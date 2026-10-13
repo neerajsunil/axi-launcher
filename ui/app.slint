@@ -1,0 +1,84 @@
+import { Button, ComboBox, LineEdit, CheckBox, ProgressIndicator, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "MC Launcher";
+    preferred-width: 480px;
+    preferred-height: 300px;
+
+    in property <[string]> versions;
+    in-out property <int> selected-index: 0;
+    in-out property <string> username: "Player";
+    in-out property <bool> show-snapshots: false;
+    in property <string> status: "Loading version list...";
+    in property <float> progress: 0;
+    in property <bool> busy: false;
+
+    callback play(int, string);
+    callback snapshots-toggled(bool);
+
+    VerticalBox {
+        alignment: start;
+
+        Text {
+            text: "Minecraft Launcher";
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        HorizontalBox {
+            padding: 0;
+            Text {
+                text: "Version";
+                vertical-alignment: center;
+                min-width: 80px;
+            }
+            ComboBox {
+                horizontal-stretch: 1;
+                model: root.versions;
+                current-index <=> root.selected-index;
+                enabled: !root.busy;
+            }
+        }
+
+        CheckBox {
+            text: "Show snapshots and old versions";
+            checked <=> root.show-snapshots;
+            enabled: !root.busy;
+            toggled => {
+                root.snapshots-toggled(self.checked);
+            }
+        }
+
+        HorizontalBox {
+            padding: 0;
+            Text {
+                text: "Username";
+                vertical-alignment: center;
+                min-width: 80px;
+            }
+            LineEdit {
+                horizontal-stretch: 1;
+                text <=> root.username;
+                enabled: !root.busy;
+            }
+        }
+
+        ProgressIndicator {
+            progress: root.progress;
+        }
+
+        Text {
+            text: root.status;
+            wrap: word-wrap;
+        }
+
+        Button {
+            text: root.busy ? "Working..." : "Play";
+            primary: true;
+            enabled: !root.busy && root.versions.length > 0;
+            clicked => {
+                root.play(root.selected-index, root.username);
+            }
+        }
+    }
+}
