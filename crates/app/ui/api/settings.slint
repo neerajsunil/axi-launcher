@@ -1,0 +1,13 @@
+import { GlobalSettingsData } from "types.slint";
+
+// Implemented in src/controllers/settings.rs.
+export global SettingsApi {
+    in property <GlobalSettingsData> current;
+    // The launcher was built with its own Azure client ID.
+    in property <bool> built-in-client-id;
+    // The launcher was built with its own CurseForge API key.
+    in property <bool> built-in-curseforge-key;
+
+    callback save(GlobalSettingsData);
+    callback open-data-dir();
+}

@@ -1,0 +1,152 @@
+import { Theme } from "../theme.slint";
+import { Spinner } from "spinner.slint";
+import { Icons } from "../icons.slint";
+import { LoadersApi } from "../api/loaders.slint";
+import { DropdownButton } from "dropdown.slint";
+
+component LoaderTile inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <image> icon;
+    in property <bool> chosen;
+    callback clicked();
+
+    height: 58px;
+    border-radius: Theme.radius;
+    border-width: root.chosen ? 2px : 1px;
+    border-color: root.chosen ? Theme.accent : touch.has-hover ? Theme.border-strong : Theme.border;
+    background: root.chosen ? Theme.accent-soft : touch.has-hover ? Theme.surface-hover : Theme.bg;
+    animate background, border-color { duration: 100ms; }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 12px;
+        spacing: 12px;
+        Image {
+            source: root.icon;
+            colorize: root.chosen ? Theme.accent : Theme.text-muted;
+            width: 22px;
+            height: 22px;
+            y: (parent.height - self.height) / 2;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: root.title;
+                color: Theme.text;
+                font-size: Theme.font-body;
+                font-weight: 700;
+            }
+            Text {
+                text: root.subtitle;
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// Choose Vanilla / Fabric / NeoForge and a loader release for `game-version`.
+// `loader-version` is "" for "recommended" (newest stable at the time of saving).
+export component LoaderPicker inherits VerticalLayout {
+    in property <string> game-version;
+    in-out property <int> loader;
+    in-out property <string> loader-version;
+
+    property <[string]> names: ["Vanilla", "Fabric", "NeoForge"];
+    property <string> name: root.names[root.loader];
+    property <string> key: root.loader + "|" + root.game-version;
+    property <bool> loaded: LoadersApi.key == root.key && !LoadersApi.loading;
+    // Whether the current choice can be used.
+    out property <bool> valid: root.loader == 0 || (root.loaded && LoadersApi.error == "" && LoadersApi.versions.length > 0);
+
+    function refresh() {
+        if root.loader != 0 && root.game-version != "" {
+            LoadersApi.query(root.loader, root.game-version);
+        }
+    }
+    changed key => {
+        root.loader-version = "";
+        root.refresh();
+    }
+    init => {
+        root.refresh();
+    }
+
+    spacing: 12px;
+
+    tiles := HorizontalLayout {
+        property <length> tile-width: (self.width - 20px) / 3;
+        spacing: 10px;
+        LoaderTile {
+            title: "Vanilla";
+            subtitle: "No mods";
+            icon: Icons.cube;
+            width: tiles.tile-width;
+            chosen: root.loader == 0;
+            clicked => {
+                root.loader = 0;
+            }
+        }
+        LoaderTile {
+            title: "Fabric";
+            subtitle: "Lightweight, fast";
+            icon: Icons.layers;
+            width: tiles.tile-width;
+            chosen: root.loader == 1;
+            clicked => {
+                root.loader = 1;
+            }
+        }
+        LoaderTile {
+            title: "NeoForge";
+            subtitle: "Big content mods";
+            icon: Icons.hammer;
+            width: tiles.tile-width;
+            chosen: root.loader == 2;
+            clicked => {
+                root.loader = 2;
+            }
+        }
+    }
+
+    if root.loader != 0: HorizontalLayout {
+        height: Theme.control-height;
+        spacing: 10px;
+
+        if root.game-version != "" && !root.loaded: Spinner {
+            size: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.game-version == "" ? "Pick a game version first"
+                : !root.loaded ? "Checking " + root.name + " versions"
+                : LoadersApi.error != "" ? LoadersApi.error
+                : LoadersApi.versions.length == 0 ? root.name + " isn't available for " + root.game-version
+                : root.name + " version";
+            color: root.loaded && (LoadersApi.error != "" || LoadersApi.versions.length == 0) ? Theme.warning : Theme.text-muted;
+            font-size: Theme.font-body;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        if root.valid: DropdownButton {
+            text: root.loader-version == "" ? "Recommended (" + LoadersApi.recommended + ")" : root.loader-version;
+            icon: Icons.chevron-down;
+            options: LoadersApi.labels;
+            menu-width: 260px;
+            selected(i, label) => {
+                root.loader-version = i == 0 ? "" : LoadersApi.versions[i - 1].version;
+            }
+        }
+    }
+}

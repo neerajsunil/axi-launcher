@@ -1,0 +1,123 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { ModpacksApi } from "../api/modpacks.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { TextField } from "../components/text-field.slint";
+import { Segmented } from "../components/segmented.slint";
+import { InstanceCard } from "../components/instance-card.slint";
+import { EmptyState } from "../components/empty-state.slint";
+import { PageHeader } from "../components/page.slint";
+
+// Every instance as a grid of cards, with search and sorting.
+export component InstancesPage inherits Rectangle {
+    property <length> gap: 16px;
+    property <length> min-card-width: 260px;
+    property <int> columns: max(1, floor((grid.width + root.gap) / (root.min-card-width + root.gap)));
+    property <length> card-width: (grid.width - (root.columns - 1) * root.gap) / root.columns;
+    property <length> card-height: 156px;
+
+    // The search box starts empty, so the list must too.
+    init => {
+        InstancesApi.search-changed("");
+    }
+
+    VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 20px;
+
+        PageHeader {
+            title: "Library";
+            subtitle: InstancesApi.total-count == 0 ? "Your instances will live here"
+                : InstancesApi.total-count == 1 ? "1 instance" : InstancesApi.total-count + " instances";
+            Button {
+                text: "Import";
+                icon: Icons.upload;
+                tooltip: "Install a .mrpack or CurseForge .zip file";
+                clicked => {
+                    ModpacksApi.import-file();
+                }
+            }
+            Button {
+                text: "New instance";
+                icon: Icons.plus;
+                kind: ButtonKind.primary;
+                clicked => {
+                    Nav.dialog = DialogKind.new-instance;
+                }
+            }
+        }
+
+        if InstancesApi.total-count > 0: HorizontalLayout {
+            spacing: 12px;
+            TextField {
+                icon: Icons.search;
+                placeholder: "Search by name, version or group";
+                edited(text) => {
+                    InstancesApi.search-changed(text);
+                }
+            }
+            Segmented {
+                options: ["Recent", "Name"];
+                current <=> InstancesApi.sort;
+                selected => {
+                    InstancesApi.sort-changed();
+                }
+            }
+        }
+
+        grid := Flickable {
+            vertical-stretch: 1;
+            content-height: ceil(InstancesApi.items.length / root.columns) * (root.card-height + root.gap) + Theme.page-padding;
+
+            for item[i] in InstancesApi.items: InstanceCard {
+                x: mod(i, root.columns) * (root.card-width + root.gap);
+                y: floor(i / root.columns) * (root.card-height + root.gap);
+                width: root.card-width;
+                height: root.card-height;
+                item: item;
+                open => {
+                    InstancesApi.select(item.id);
+                    Nav.instance-tab = 0;
+                    Nav.page = Page.instance;
+                }
+                play => {
+                    InstancesApi.play(item.id);
+                }
+                stop => {
+                    InstancesApi.stop(item.id);
+                }
+            }
+        }
+    }
+
+    if InstancesApi.total-count == 0: EmptyState {
+        art: Icons.axi;
+        title: "No instances yet";
+        text: "An instance is a separate Minecraft install with its own version, mods and worlds. Make one from scratch or start from a modpack.";
+        Button {
+            text: "Discover modpacks";
+            icon: Icons.compass;
+            clicked => {
+                Nav.page = Page.browse-modpacks;
+            }
+        }
+        Button {
+            text: "New instance";
+            icon: Icons.plus;
+            kind: ButtonKind.primary;
+            clicked => {
+                Nav.dialog = DialogKind.new-instance;
+            }
+        }
+    }
+    if InstancesApi.total-count > 0 && InstancesApi.items.length == 0: EmptyState {
+        y: 120px;
+        height: parent.height - 120px;
+        icon: Icons.search;
+        title: "Nothing matches";
+        text: "No instance has that name, version or group.";
+    }
+}

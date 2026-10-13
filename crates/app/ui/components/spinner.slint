@@ -1,0 +1,24 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+
+// A small spinning arc over a faint ring, for work without a known end.
+export component Spinner inherits Rectangle {
+    in property <length> size: 16px;
+    in property <color> tint: Theme.accent;
+
+    width: root.size;
+    height: root.size;
+
+    Rectangle {
+        border-radius: self.width / 2;
+        border-width: max(1.5px, root.size / 9);
+        border-color: root.tint.with-alpha(0.18);
+    }
+    Image {
+        source: Icons.spinner;
+        colorize: root.tint;
+        width: root.size;
+        height: root.size;
+        transform-rotation: mod(animation-tick() / 1ms, 800) / 800 * 360deg;
+    }
+}

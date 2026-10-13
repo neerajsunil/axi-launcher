@@ -1,0 +1,107 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { ModsApi } from "../api/mods.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+import { Badge } from "../components/card.slint";
+import { ScrollView } from "../components/scroll-view.slint";
+import { Toggle } from "../components/toggle.slint";
+import { SkeletonList, Delayed } from "../components/skeleton.slint";
+import { ListRow } from "../components/list-row.slint";
+
+// Lists every version of an installed mod, resource pack or shader so one can be picked.
+export component ModVersionsDialog inherits Dialog {
+    title: ModsApi.versions-title != "" ? ModsApi.versions-title + " versions" : "Versions";
+    panel-width: 640px;
+    close => {
+        Nav.dialog = DialogKind.none;
+    }
+
+    Text {
+        text: "Versions for " + InstancesApi.selected.loader + " " + InstancesApi.selected.version
+            + " are listed first. Picking an older one pins it, so update checks leave it alone.";
+        color: Theme.text-muted;
+        wrap: word-wrap;
+    }
+
+    Rectangle {
+        height: 360px;
+
+        if ModsApi.versions.length == 0 && ModsApi.versions-loading: Delayed {
+            delay: 60ms;
+            SkeletonList {
+                rows: 6;
+                row-height: 56px;
+                icon-size: 0px;
+                button: true;
+            }
+        }
+
+        if ModsApi.versions.length == 0 && !ModsApi.versions-loading: Text {
+            text: ModsApi.versions-error != "" ? ModsApi.versions-error
+                : "No versions for this game version. Show incompatible ones to see the rest.";
+            color: ModsApi.versions-error != "" ? Theme.danger : Theme.text-muted;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+
+        list := ScrollView {
+            visible: ModsApi.versions.length > 0;
+            spacing: 2px;
+            // Long histories (incompatible versions especially) are added a batch at a time.
+            reached-end => {
+                if ModsApi.versions-more {
+                    ModsApi.versions-load-more(ModsApi.versions.length);
+                }
+            }
+            for item in ModsApi.versions: ListRow {
+                title: item.version;
+                detail: item.date + (item.detail != "" ? " · " + item.detail : "");
+                muted: !item.compatible;
+                highlighted: item.current;
+                action-text: item.current ? "" : "Install";
+                action-icon: Icons.download;
+                action-kind: item.compatible ? ButtonKind.primary : ButtonKind.secondary;
+                action-enabled: !ModsApi.versions-installing;
+                action => {
+                    ModsApi.install-version(item.file-id);
+                    root.close();
+                }
+                if item.current: Badge {
+                    text: "Installed";
+                    text-color: Theme.accent;
+                    fill: Theme.surface;
+                }
+                if !item.stable: Badge {
+                    text: "Beta";
+                }
+                if !item.compatible: Badge {
+                    text: "Incompatible";
+                    text-color: Theme.danger;
+                }
+            }
+        }
+    }
+
+    DialogFooter {
+        alignment: space-between;
+        Toggle {
+            text: "Show incompatible versions" + (ModsApi.versions-hidden > 0 ? " (" + ModsApi.versions-hidden + ")" : "");
+            checked: ModsApi.show-incompatible;
+            enabled: ModsApi.versions-hidden > 0;
+            toggled(on) => {
+                list.scroll-to-top();
+                ModsApi.show-incompatible-changed(on);
+            }
+        }
+        Button {
+            text: "Close";
+            clicked => {
+                root.close();
+            }
+        }
+    }
+}

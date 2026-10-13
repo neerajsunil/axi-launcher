@@ -1,0 +1,187 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { Button, ButtonKind, ButtonSize } from "../components/button.slint";
+import { Breadcrumb } from "../components/page.slint";
+import { MenuPanel, MenuItem } from "../components/menu.slint";
+import { Tabs } from "../components/tabs.slint";
+import { Badge } from "../components/card.slint";
+import { ProgressBar } from "../components/progress-bar.slint";
+import { InstanceAvatar, InstanceMenu } from "../components/instance-card.slint";
+import { InstanceOverview } from "instance/overview.slint";
+import { InstanceSettings } from "instance/settings.slint";
+import { InstanceContent } from "instance/content.slint";
+import { InstanceLogs } from "instance/logs.slint";
+
+// One instance: header with play controls and Overview / Content / Settings / Logs tabs.
+export component InstanceDetailsPage inherits Rectangle {
+    property <string> id: InstancesApi.selected.id;
+
+    VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 16px;
+
+        Breadcrumb {
+            parent-label: "Library";
+            current: InstancesApi.selected.name;
+            back => {
+                Nav.page = Page.instances;
+            }
+        }
+
+        // Header
+        HorizontalLayout {
+            spacing: 16px;
+            avatar := InstanceAvatar {
+                item: InstancesApi.selected;
+                size: 84px;
+                editable: true;
+                edit => {
+                    icon-menu.show();
+                }
+
+                icon-menu := PopupWindow {
+                    x: 0;
+                    y: avatar.height + 6px;
+                    width: 200px;
+                    height: 10px + 2 * 34px + 1px;
+
+                    MenuPanel {
+                        MenuItem {
+                            text: "Choose picture...";
+                            icon: Icons.image;
+                            clicked => {
+                                InstancesApi.change-icon(root.id);
+                            }
+                        }
+                        MenuItem {
+                            text: "Use default icon";
+                            icon: Icons.refresh;
+                            clicked => {
+                                InstancesApi.reset-icon(root.id);
+                            }
+                        }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+                horizontal-stretch: 1;
+                Text {
+                    text: InstancesApi.selected.name;
+                    color: Theme.text;
+                    font-size: Theme.font-h1;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: start;
+                    if InstancesApi.selected.running: Badge {
+                        text: "● Playing now";
+                        text-color: Theme.play;
+                        fill: Theme.play-soft;
+                    }
+                    Badge {
+                        text: "Minecraft " + InstancesApi.selected.version;
+                    }
+                    Badge {
+                        text: InstancesApi.selected.loader
+                            + (InstancesApi.selected.loader-version != "" ? " " + InstancesApi.selected.loader-version : "");
+                    }
+                    if InstancesApi.selected.pack != "": Badge {
+                        text: InstancesApi.selected.pack;
+                        text-color: Theme.info;
+                        fill: Theme.info-soft;
+                    }
+                    if InstancesApi.selected.group != "": Badge {
+                        text: InstancesApi.selected.group;
+                        text-color: Theme.accent;
+                        fill: Theme.accent-soft;
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 8px;
+                    Button {
+                        icon: Icons.folder;
+                        tooltip: "Open folder";
+                        size: ButtonSize.large;
+                        clicked => {
+                            InstancesApi.open-folder(root.id);
+                        }
+                    }
+                    Button {
+                        icon: Icons.more;
+                        tooltip: "More";
+                        size: ButtonSize.large;
+                        clicked => {
+                            menu.show-at(
+                                self.absolute-position.x - root.absolute-position.x + self.width - 210px,
+                                self.absolute-position.y - root.absolute-position.y + self.height + 6px);
+                        }
+                    }
+                    if !InstancesApi.selected.running: Button {
+                        text: InstancesApi.selected.busy ? "Preparing" : "Play";
+                        icon: Icons.play;
+                        kind: ButtonKind.play;
+                        size: ButtonSize.large;
+                        loading: InstancesApi.selected.busy;
+                        clicked => {
+                            InstancesApi.play(root.id);
+                        }
+                    }
+                    if InstancesApi.selected.running: Button {
+                        text: "Stop";
+                        icon: Icons.stop;
+                        kind: ButtonKind.danger;
+                        size: ButtonSize.large;
+                        clicked => {
+                            InstancesApi.stop(root.id);
+                        }
+                    }
+                }
+                if InstancesApi.selected.busy: VerticalLayout {
+                    spacing: 6px;
+                    width: 260px;
+                    ProgressBar {
+                        progress: InstancesApi.selected.progress;
+                    }
+                    Text {
+                        text: InstancesApi.selected.status;
+                        color: Theme.text-muted;
+                        font-size: Theme.font-small;
+                        horizontal-alignment: right;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+
+        Tabs {
+            tabs: ["Overview", "Content", "Settings", "Logs"];
+            current <=> Nav.instance-tab;
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+            if Nav.instance-tab == 0: InstanceOverview { }
+            if Nav.instance-tab == 1: InstanceContent { }
+            if Nav.instance-tab == 2: InstanceSettings { }
+            if Nav.instance-tab == 3: InstanceLogs { }
+        }
+    }
+
+    menu := InstanceMenu {
+        x: 0;
+        y: 0;
+        item: InstancesApi.selected;
+    }
+}

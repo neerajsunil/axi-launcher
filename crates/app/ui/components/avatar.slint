@@ -1,0 +1,30 @@
+import { Theme } from "../theme.slint";
+
+// A player's skin face, or their initial in a circle when there is none.
+export component Avatar inherits Rectangle {
+    in property <string> initial;
+    in property <image> head;
+    in property <bool> has-head;
+    in property <length> size: 32px;
+
+    width: root.size;
+    height: root.size;
+    border-radius: root.has-head ? root.size * 0.2 : root.size / 2;
+    background: root.has-head ? transparent : Theme.accent-soft;
+    clip: true;
+
+    if root.has-head: Image {
+        source: root.head;
+        width: parent.width;
+        height: parent.height;
+        image-rendering: pixelated;
+    }
+    if !root.has-head: Text {
+        text: root.initial;
+        color: Theme.accent;
+        font-weight: 700;
+        font-size: root.size / 2;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}

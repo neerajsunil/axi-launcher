@@ -1,0 +1,89 @@
+import { Theme } from "../theme.slint";
+
+// A bordered panel. Put a layout inside.
+export component Card inherits Rectangle {
+    background: Theme.surface;
+    border-radius: Theme.radius-lg;
+    border-width: 1px;
+    border-color: Theme.border;
+}
+
+// Titled group of settings rows inside a card.
+export component Section inherits Card {
+    in property <string> title;
+    in property <string> description;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 16px;
+
+        VerticalLayout {
+            spacing: 2px;
+            Text {
+                text: root.title;
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+            }
+            if root.description != "": Text {
+                text: root.description;
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+                wrap: word-wrap;
+            }
+        }
+
+        @children
+    }
+}
+
+// Label on the left, control(s) on the right.
+export component FormRow inherits HorizontalLayout {
+    in property <string> label;
+    in property <string> hint;
+    spacing: 16px;
+
+    VerticalLayout {
+        width: 200px;
+        alignment: center;
+        spacing: 2px;
+        Text {
+            text: root.label;
+            color: Theme.text;
+            font-size: Theme.font-body;
+            wrap: word-wrap;
+        }
+        if root.hint != "": Text {
+            text: root.hint;
+            color: Theme.text-faint;
+            font-size: Theme.font-small;
+            wrap: word-wrap;
+        }
+    }
+
+    @children
+}
+
+// Small rounded label, e.g. "Running" or "Snapshot".
+export component Badge inherits Rectangle {
+    in property <string> text;
+    in property <color> text-color: Theme.text-muted;
+    in property <color> fill: Theme.control;
+
+    height: 20px;
+    border-radius: 10px;
+    background: root.fill;
+    horizontal-stretch: 0;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        Text {
+            text: root.text;
+            color: root.text-color;
+            font-size: 11px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}

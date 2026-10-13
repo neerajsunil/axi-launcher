@@ -1,0 +1,63 @@
+import { Theme } from "../theme.slint";
+
+// A friendly centered message for empty lists, blocked features and errors: an icon in a
+// soft circle, a title saying what's going on, a line saying what to do, and action
+// buttons as children.
+export component EmptyState inherits VerticalLayout {
+    in property <image> icon;
+    // A full-color picture (the mascot) instead of a tinted icon.
+    in property <image> art;
+    in property <string> title;
+    in property <string> text;
+    in property <color> tint: Theme.accent;
+
+    padding: 32px;
+    spacing: 10px;
+    alignment: center;
+
+    HorizontalLayout {
+        alignment: center;
+        padding-bottom: 6px;
+        if root.art.width > 0: Image {
+            source: root.art;
+            width: 96px;
+            height: 96px;
+        }
+        if root.art.width == 0: Rectangle {
+            width: 64px;
+            height: 64px;
+            border-radius: 32px;
+            background: root.tint.with-alpha(0.12);
+            Image {
+                source: root.icon;
+                colorize: root.tint;
+                width: 28px;
+                height: 28px;
+            }
+        }
+    }
+    Text {
+        text: root.title;
+        color: Theme.text;
+        font-size: Theme.font-title;
+        font-weight: 700;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.text != "": HorizontalLayout {
+        alignment: center;
+        Text {
+            max-width: 440px;
+            text: root.text;
+            color: Theme.text-muted;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+    HorizontalLayout {
+        alignment: center;
+        spacing: 10px;
+        padding-top: 8px;
+        @children
+    }
+}

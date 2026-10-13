@@ -1,0 +1,37 @@
+import { InstanceItem, InstanceSettingsData } from "types.slint";
+
+// Implemented in src/controllers/instances.rs, launch.rs and instance_settings.rs.
+export global InstancesApi {
+    // Instances matching the search, sorted by name.
+    in property <[InstanceItem]> items;
+    in property <int> total-count;
+    // Most recently played first (never-played ones last, newest first), for the home page.
+    in property <[InstanceItem]> recent;
+    // Order of `items`: 0 = recently played, 1 = name.
+    in-out property <int> sort: 0;
+    callback sort-changed();
+    in-out property <string> selected-id;
+    in property <InstanceItem> selected;
+    in property <InstanceSettingsData> settings;
+    // Recent game output of the selected instance.
+    in property <[string]> logs;
+
+    callback search-changed(string);
+    callback select(string);
+    // name, group, game version, loader index (0 vanilla, 1 Fabric, 2 NeoForge), loader version ("" = recommended)
+    callback create(string, string, string, int, string);
+    callback delete(string);
+    callback copy(string, string /* new name */);
+    callback rename(string, string);
+    // id, game version, loader index, loader version
+    callback change-game(string, string, int, string);
+    callback save-settings(string, InstanceSettingsData);
+    callback open-folder(string);
+    // Picks a picture for the instance / goes back to the modpack or loader logo.
+    callback change-icon(string);
+    callback reset-icon(string);
+    callback open-log(string);
+    callback clear-logs(string);
+    callback play(string);
+    callback stop(string);
+}

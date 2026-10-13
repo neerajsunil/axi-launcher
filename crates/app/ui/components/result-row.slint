@@ -1,0 +1,135 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { ModHitItem } from "../api/types.slint";
+import { Button, ButtonKind } from "button.slint";
+import { Card } from "card.slint";
+import { ModIcon } from "mod-icon.slint";
+
+// Shown instead of an install button for things already installed.
+export component InstalledPill inherits Rectangle {
+    height: Theme.control-height;
+    border-radius: Theme.radius;
+    background: Theme.play-soft;
+    HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        padding-left: 14px;
+        padding-right: 16px;
+        Image {
+            source: Icons.check;
+            colorize: Theme.play;
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: "Installed";
+            color: Theme.play;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// A search result on Modrinth or CurseForge with an install button. Clicking it opens the project.
+export component ResultRow inherits Card {
+    in property <ModHitItem> item;
+    // Keep the install button usable for installed items (modpacks make a new instance each time).
+    in property <bool> allow-reinstall;
+    in property <bool> enabled: true;
+    callback install();
+    callback open-page();
+
+    height: 96px;
+    background: touch.has-hover ? Theme.surface-hover : Theme.surface;
+    border-color: touch.has-hover ? Theme.border-strong : Theme.border;
+    animate background, border-color { duration: Theme.fast; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.open-page();
+        }
+    }
+
+    HorizontalLayout {
+        padding: 14px;
+        spacing: 14px;
+
+        ModIcon {
+            icon: root.item.icon;
+            has-icon: root.item.has-icon;
+            initial: root.item.initial;
+            size: 60px;
+            y: (parent.height - self.height) / 2;
+        }
+        VerticalLayout {
+            spacing: 4px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Text {
+                    text: root.item.title;
+                    color: title-touch.has-hover ? Theme.accent : Theme.text;
+                    font-size: Theme.font-large;
+                    font-weight: 700;
+                    overflow: elide;
+                    title-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.open-page();
+                        }
+                    }
+                }
+                Text {
+                    text: root.item.author != "" ? "by " + root.item.author : "";
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+            Text {
+                text: root.item.description;
+                color: Theme.text-muted;
+                font-size: Theme.font-body;
+                wrap: word-wrap;
+                overflow: elide;
+                vertical-stretch: 1;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            width: 128px;
+            if root.item.installed && !root.allow-reinstall: InstalledPill { }
+            if !root.item.installed || root.allow-reinstall: Button {
+                text: root.item.installing ? "Installing" : root.item.installed ? "Install again" : "Install";
+                icon: Icons.download;
+                kind: root.item.installed ? ButtonKind.secondary : ButtonKind.primary;
+                loading: root.item.installing;
+                enabled: root.enabled;
+                clicked => {
+                    root.install();
+                }
+            }
+            HorizontalLayout {
+                alignment: center;
+                spacing: 4px;
+                Image {
+                    source: Icons.download;
+                    colorize: Theme.text-faint;
+                    width: 12px;
+                    height: 12px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: root.item.downloads;
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                }
+            }
+        }
+    }
+}

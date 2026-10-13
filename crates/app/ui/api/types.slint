@@ -1,0 +1,197 @@
+// Data passed between Rust and the UI.
+
+export struct InstanceItem {
+    id: string,
+    name: string,
+    initial: string,
+    // Picked by the user or the modpack's logo; without one the loader's logo shows.
+    icon: image,
+    has-icon: bool,
+    version: string,
+    // Display name ("Vanilla", "Fabric", "NeoForge"), index into the loader list and release.
+    loader: string,
+    loader-index: int,
+    loader-version: string,
+    group: string,
+    last-played: string,
+    playtime: string,
+    created: string,
+    notes: string,
+    // "Name version" of the modpack it came from; empty otherwise.
+    pack: string,
+    running: bool,
+    busy: bool,
+    status: string,
+    progress: float,
+}
+
+// Editable instance settings. Numbers are strings so Rust can validate them.
+export struct InstanceSettingsData {
+    name: string,
+    group: string,
+    notes: string,
+    java-override: bool,
+    java-path: string,
+    memory-override: bool,
+    min-memory: string,
+    max-memory: string,
+    jvm-override: bool,
+    jvm-args: string,
+    window-override: bool,
+    width: string,
+    height: string,
+    fullscreen: bool,
+}
+
+export struct GlobalSettingsData {
+    // 0 = system, 1 = light, 2 = dark.
+    theme: int,
+    java-path: string,
+    min-memory: string,
+    max-memory: string,
+    jvm-args: string,
+    width: string,
+    height: string,
+    fullscreen: bool,
+    downloads: string,
+    hide-on-launch: bool,
+    curseforge-key: string,
+    msa-client-id: string,
+    data-dir: string,
+}
+
+export struct VersionItem {
+    id: string,
+    kind: string,
+    date: string,
+}
+
+export struct LoaderVersionItem {
+    version: string,
+    stable: bool,
+}
+
+// A jar in the instance's mods folder.
+export struct ModItem {
+    file-name: string,
+    title: string,
+    version: string,
+    enabled: bool,
+    source: string,
+    icon: image,
+    has-icon: bool,
+    initial: string,
+    dependency: bool,
+    update-available: bool,
+    // Installed through the launcher, so other versions can be picked.
+    has-versions: bool,
+    // A version picked by hand; update checks skip it.
+    pinned: bool,
+    // Queued or downloading.
+    installing: bool,
+}
+
+// A version of an installed project in the version picker.
+export struct ModVersionItem {
+    file-id: string,
+    version: string,
+    // "1.21.1, 1.21 · Fabric"
+    detail: string,
+    date: string,
+    stable: bool,
+    // Made for the instance's game version and loader.
+    compatible: bool,
+    // The installed one.
+    current: bool,
+}
+
+// A search result on Modrinth or CurseForge.
+export struct ModHitItem {
+    project-id: string,
+    title: string,
+    author: string,
+    description: string,
+    downloads: string,
+    icon: image,
+    has-icon: bool,
+    initial: string,
+    page-url: string,
+    installed: bool,
+    installing: bool,
+}
+
+// A saved player account.
+export struct AccountItem {
+    // Player UUID.
+    id: string,
+    name: string,
+    initial: string,
+    // The face of the player's skin (Microsoft accounts only, once loaded).
+    head: image,
+    has-head: bool,
+    microsoft: bool,
+    active: bool,
+    // Signing in again in the background.
+    busy: bool,
+}
+
+// A Java installation found on this computer.
+export struct JavaInstallItem {
+    // "Java 21.0.7"
+    title: string,
+    vendor: string,
+    path: string,
+    // Downloaded by this launcher.
+    managed: bool,
+}
+
+// A Java version a provider offers for download.
+export struct JavaReleaseItem {
+    // "Java 21"
+    title: string,
+    // "21.0.7 · Minecraft 1.20.5 – 1.21.x"
+    detail: string,
+    lts: bool,
+    // Newer than any Minecraft version needs.
+    newer: bool,
+    // Already downloaded; `path` is its executable.
+    installed: bool,
+    // Downloaded, but a newer build is out.
+    outdated: bool,
+    path: string,
+}
+
+// A Modrinth project's page (see ModsApi.details).
+export struct ProjectDetailsData {
+    title: string,
+    summary: string,
+    author: string,
+    icon: image,
+    has-icon: bool,
+    initial: string,
+    downloads: string,
+    followers: string,
+    updated: string,
+    published: string,
+    license: string,
+    // "Client and server", "Client", "Server" or empty.
+    environment: string,
+    categories: string,
+    page-url: string,
+}
+
+// One piece of a project's description. kind: 0 heading, 1 paragraph, 2 list item, 3 image, 4 code, 5 divider.
+export struct DescriptionBlock {
+    kind: int,
+    text: string,
+    image: image,
+    has-image: bool,
+}
+
+// A labelled link (source code, issues, ...) or a gallery picture.
+export struct LinkItem {
+    label: string,
+    url: string,
+    image: image,
+    has-image: bool,
+}

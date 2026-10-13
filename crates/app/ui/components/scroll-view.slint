@@ -1,0 +1,84 @@
+import { Theme } from "../theme.slint";
+
+// Vertical scroll container with a thin overlay scrollbar.
+// Children go in a VerticalLayout that sizes the scrollable content.
+export component ScrollView inherits Rectangle {
+    in property <length> content-padding: 0;
+    in property <length> spacing: 0;
+    in-out property <length> content-y <=> flick.content-y;
+    out property <length> content-height: flick.content-height;
+    out property <length> visible-height: flick.height;
+    // Fired when the end comes within this distance, so lists can load their next page.
+    in property <length> end-threshold: 400px;
+    callback reached-end();
+
+    // How far the content can scroll.
+    property <length> range: max(0px, flick.content-height - flick.height);
+
+    public function scroll-to-bottom() {
+        flick.content-y = -root.range;
+    }
+    public function scroll-to-top() {
+        flick.content-y = 0px;
+    }
+    function check-end() {
+        if root.range + flick.content-y <= root.end-threshold {
+            root.reached-end();
+        }
+    }
+
+    flick := Flickable {
+        content-height: content.preferred-height;
+        changed content-y => {
+            root.check-end();
+        }
+        // New rows that still don't fill the view should pull in more as well.
+        changed content-height => {
+            root.check-end();
+        }
+
+        content := VerticalLayout {
+            width: flick.width;
+            padding: root.content-padding;
+            // Keep content clear of the scrollbar.
+            padding-right: root.content-padding + 12px;
+            spacing: root.spacing;
+            alignment: start;
+            @children
+        }
+    }
+
+    if root.range > 0: Rectangle {
+        property <length> thumb: max(24px, flick.height * flick.height / flick.content-height);
+        // Thumb travel per pixel of content scrolled.
+        property <float> scale: (flick.height - self.thumb) / root.range;
+        x: parent.width - 8px;
+        width: 4px;
+        height: self.thumb;
+        y: clamp(-flick.content-y, 0px, root.range) * self.scale;
+        border-radius: 2px;
+        background: Theme.border-strong;
+        opacity: bar-touch.has-hover || bar-touch.pressed ? 1 : 0.6;
+        animate opacity { duration: 120ms; }
+
+        // Wider than the thumb so it is easy to grab.
+        bar-touch := TouchArea {
+            x: -4px;
+            width: 12px;
+            property <length> start-y;
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down {
+                    self.start-y = flick.content-y;
+                }
+            }
+            moved => {
+                if self.pressed {
+                    flick.content-y = clamp(
+                        self.start-y - (self.mouse-y - self.pressed-y) / parent.scale,
+                        -root.range,
+                        0px);
+                }
+            }
+        }
+    }
+}

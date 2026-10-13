@@ -1,0 +1,159 @@
+import { Theme } from "theme.slint";
+import { Nav, Page, DialogKind } from "nav.slint";
+import { AppApi } from "api/app.slint";
+import { InstancesApi } from "api/instances.slint";
+import { AccountsApi } from "api/accounts.slint";
+import { NavRail } from "components/nav-rail.slint";
+import { FadeIn } from "components/page.slint";
+import { HomePage } from "pages/home.slint";
+import { Toast } from "components/toast.slint";
+import { TooltipLayer } from "components/tooltip.slint";
+import { InstancesPage } from "pages/instances.slint";
+import { InstanceDetailsPage } from "pages/instance-details.slint";
+import { SettingsPage } from "pages/settings.slint";
+import { AccountsPage } from "pages/accounts.slint";
+import { BrowseContentPage } from "pages/browse-content.slint";
+import { BrowseModpacksPage } from "pages/browse-modpacks.slint";
+import { NewInstanceDialog } from "dialogs/new-instance.slint";
+import { ConfirmDialog } from "dialogs/confirm.slint";
+import { PromptDialog } from "dialogs/prompt.slint";
+import { ChangeVersionDialog } from "dialogs/change-version.slint";
+import { MicrosoftLoginDialog } from "dialogs/microsoft-login.slint";
+import { ModVersionsDialog } from "dialogs/mod-versions.slint";
+import { JavaDialog } from "dialogs/java.slint";
+
+// Re-exported so Rust can reach them.
+export { Theme, Nav, Page, DialogKind, AppApi, InstancesApi, AccountsApi }
+export { SettingsApi } from "api/settings.slint";
+export { VersionsApi } from "api/versions.slint";
+export { LoadersApi } from "api/loaders.slint";
+export { ModsApi } from "api/mods.slint";
+export { ModpacksApi } from "api/modpacks.slint";
+export { JavaApi } from "api/java.slint";
+export { AccountItem, InstanceItem, InstanceSettingsData, GlobalSettingsData, VersionItem, LoaderVersionItem, ModItem, ModHitItem, ModVersionItem, JavaInstallItem, JavaReleaseItem, ProjectDetailsData, DescriptionBlock, LinkItem } from "api/types.slint";
+
+export component MainWindow inherits Window {
+    title: "Axi Launcher";
+    icon: @image-url("icons/axi-icon.svg");
+    min-width: 900px;
+    min-height: 600px;
+    preferred-width: 1180px;
+    preferred-height: 760px;
+    background: Theme.bg;
+    default-font-size: Theme.font-body;
+
+    HorizontalLayout {
+        NavRail { }
+        Rectangle {
+            horizontal-stretch: 1;
+            if Nav.page == Page.home: FadeIn {
+                HomePage { }
+            }
+            if Nav.page == Page.instances: FadeIn {
+                InstancesPage { }
+            }
+            if Nav.page == Page.instance: FadeIn {
+                InstanceDetailsPage { }
+            }
+            if Nav.page == Page.browse-content: FadeIn {
+                BrowseContentPage { }
+            }
+            if Nav.page == Page.browse-modpacks: FadeIn {
+                BrowseModpacksPage { }
+            }
+            if Nav.page == Page.accounts: FadeIn {
+                AccountsPage { }
+            }
+            if Nav.page == Page.settings: FadeIn {
+                SettingsPage { }
+            }
+        }
+    }
+
+    // Dialog layer
+    if Nav.dialog == DialogKind.new-instance: NewInstanceDialog { }
+    if Nav.dialog == DialogKind.change-version: ChangeVersionDialog { }
+    if Nav.dialog == DialogKind.mod-versions: ModVersionsDialog { }
+    if Nav.dialog == DialogKind.java: JavaDialog { }
+    if Nav.dialog == DialogKind.delete-instance: ConfirmDialog {
+        title: "Delete instance?";
+        message: "\"" + InstancesApi.selected.name + "\" and all its worlds, mods and settings will be permanently deleted. This cannot be undone.";
+        confirm-text: "Delete";
+        danger: true;
+        close => {
+            Nav.dialog = DialogKind.none;
+        }
+        confirmed => {
+            InstancesApi.delete(InstancesApi.selected.id);
+            if Nav.page == Page.instance {
+                Nav.page = Page.instances;
+            }
+        }
+    }
+    if Nav.dialog == DialogKind.rename-instance: PromptDialog {
+        title: "Rename instance";
+        label: "New name";
+        initial: InstancesApi.selected.name;
+        confirm-text: "Rename";
+        close => {
+            Nav.dialog = DialogKind.none;
+        }
+        submitted(name) => {
+            InstancesApi.rename(InstancesApi.selected.id, name);
+        }
+    }
+    if Nav.dialog == DialogKind.copy-instance: PromptDialog {
+        title: "Copy instance";
+        label: "Name of the copy (worlds and files are copied too)";
+        initial: InstancesApi.selected.name + " (copy)";
+        confirm-text: "Copy";
+        close => {
+            Nav.dialog = DialogKind.none;
+        }
+        submitted(name) => {
+            InstancesApi.copy(InstancesApi.selected.id, name);
+        }
+    }
+
+    if Nav.dialog == DialogKind.microsoft-login: MicrosoftLoginDialog {
+        close => {
+            AccountsApi.cancel-sign-in();
+            Nav.dialog = DialogKind.none;
+        }
+    }
+    if Nav.dialog == DialogKind.add-offline-account: PromptDialog {
+        title: "Add offline account";
+        label: "Player name (3-16 letters, digits or _)";
+        confirm-text: "Add";
+        close => {
+            Nav.dialog = DialogKind.none;
+        }
+        submitted(name) => {
+            AccountsApi.add-offline(name);
+        }
+    }
+    if Nav.dialog == DialogKind.remove-account: ConfirmDialog {
+        title: "Remove account?";
+        message: "\"" + Nav.account-name + "\" will be removed from the launcher. You can add it again later.";
+        confirm-text: "Remove";
+        danger: true;
+        close => {
+            Nav.dialog = DialogKind.none;
+        }
+        confirmed => {
+            AccountsApi.remove(Nav.account-id);
+        }
+    }
+
+    if AppApi.toast != "": Toast {
+        x: parent.width - self.width - 20px;
+        y: parent.height - self.height - 20px;
+        text: AppApi.toast;
+        error: AppApi.toast-error;
+        dismissed => {
+            AppApi.toast = "";
+        }
+    }
+
+    TooltipLayer { }
+}

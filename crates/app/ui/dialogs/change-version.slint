@@ -1,0 +1,57 @@
+import { Theme } from "../theme.slint";
+import { Nav, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+import { VersionPicker } from "../components/version-picker.slint";
+import { LoaderPicker } from "../components/loader-picker.slint";
+
+// Changes an instance's game version and/or mod loader.
+export component ChangeVersionDialog inherits Dialog {
+    property <string> version: InstancesApi.selected.version;
+    property <int> loader: InstancesApi.selected.loader-index;
+    property <string> loader-version: InstancesApi.selected.loader-version;
+    property <bool> changed-anything: root.version != InstancesApi.selected.version
+        || root.loader != InstancesApi.selected.loader-index
+        || root.loader-version != InstancesApi.selected.loader-version;
+
+    title: "Version and mod loader";
+    panel-width: 640px;
+    close => {
+        Nav.dialog = DialogKind.none;
+    }
+
+    Text {
+        text: "Worlds opened in a newer version may not load in an older one, and installed mods may not work after switching. Back up your saves first.";
+        color: Theme.text-muted;
+        font-size: Theme.font-body;
+        wrap: word-wrap;
+    }
+    VersionPicker {
+        vertical-stretch: 1;
+        selected <=> root.version;
+    }
+    picker := LoaderPicker {
+        game-version: root.version;
+        loader <=> root.loader;
+        loader-version <=> root.loader-version;
+    }
+
+    DialogFooter {
+        Button {
+            text: "Cancel";
+            clicked => {
+                root.close();
+            }
+        }
+        Button {
+            text: "Apply";
+            kind: ButtonKind.primary;
+            enabled: root.changed-anything && picker.valid;
+            clicked => {
+                InstancesApi.change-game(InstancesApi.selected.id, root.version, root.loader, root.loader-version);
+                root.close();
+            }
+        }
+    }
+}

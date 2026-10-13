@@ -1,0 +1,78 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page } from "../nav.slint";
+import { ModsApi, ContentKinds } from "../api/mods.slint";
+import { ModpacksApi } from "../api/modpacks.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Segmented } from "../components/segmented.slint";
+import { PageHeader } from "../components/page.slint";
+import { SearchResults } from "../components/search-results.slint";
+import { ProjectDetails } from "../components/project-details.slint";
+
+// Search Modrinth or CurseForge for modpacks; installing one creates a new instance.
+export component BrowseModpacksPage inherits Rectangle {
+    function search() {
+        ModsApi.search("", ContentKinds.modpacks, ModsApi.source, results.query);
+    }
+    init => {
+        ModsApi.details-open = false;
+        root.search();
+    }
+
+    VerticalLayout {
+        // Hidden rather than removed while a project is open, so the results keep their scroll.
+        visible: !ModsApi.details-open;
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 16px;
+
+        PageHeader {
+            title: "Discover modpacks";
+            subtitle: "Each one installs as its own instance, ready to play. Fabric and NeoForge packs are supported.";
+            Button {
+                text: "Import file";
+                icon: Icons.upload;
+                clicked => {
+                    ModpacksApi.import-file();
+                }
+            }
+            Segmented {
+                options: ["Modrinth", "CurseForge"];
+                current <=> ModsApi.source;
+                selected => {
+                    results.run-search();
+                }
+            }
+        }
+
+        results := SearchResults {
+            vertical-stretch: 1;
+            kind: ContentKinds.modpacks;
+            allow-reinstall: true;
+            search => {
+                root.search();
+            }
+            open-details(project-id) => {
+                ModsApi.open-details("", ContentKinds.modpacks, project-id);
+            }
+            install(project-id) => {
+                ModpacksApi.install(ModsApi.source, project-id);
+            }
+        }
+    }
+
+    if ModsApi.details-open: VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        ProjectDetails {
+            kind: ContentKinds.modpacks;
+            allow-reinstall: true;
+            install(project-id) => {
+                ModpacksApi.install(ModsApi.source, project-id);
+            }
+            retry => {
+                ModsApi.open-details("", ContentKinds.modpacks, ModsApi.details-hit.project-id);
+            }
+        }
+    }
+}

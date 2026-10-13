@@ -1,0 +1,114 @@
+import { Theme } from "../theme.slint";
+import { TooltipState } from "tooltip.slint";
+import { Spinner } from "spinner.slint";
+
+// primary: the main action of a view (one per view). play: launching a game only.
+export enum ButtonKind { primary, secondary, danger, ghost, play }
+export enum ButtonSize { small, normal, large }
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <ButtonKind> kind: secondary;
+    in property <ButtonSize> size: normal;
+    in property <bool> enabled: true;
+    // Shows a spinner in place of the icon and ignores clicks.
+    in property <bool> loading;
+    // Shown after hovering a moment; icon-only buttons should always have one.
+    in property <string> tooltip;
+    callback clicked();
+
+    function hide-tooltip() {
+        tip-timer.running = false;
+        if TooltipState.text == root.tooltip {
+            TooltipState.text = "";
+        }
+    }
+
+    property <bool> active: root.enabled && !root.loading;
+    property <bool> icon-only: root.text == "";
+    property <length> icon-size: root.size == ButtonSize.large ? 18px : root.size == ButtonSize.small ? 14px : 16px;
+    property <color> fg: !root.enabled ? Theme.text-faint
+        : root.kind == ButtonKind.primary ? Theme.on-accent
+        : root.kind == ButtonKind.play ? Theme.on-play
+        : root.kind == ButtonKind.danger ? #ffffff
+        : Theme.text;
+
+    height: root.size == ButtonSize.large ? Theme.control-height-lg : root.size == ButtonSize.small ? 30px : Theme.control-height;
+    // Icon-only buttons are square.
+    min-width: root.icon-only ? self.height : 0;
+    horizontal-stretch: 0;
+    border-radius: root.size == ButtonSize.large ? Theme.radius-lg - 2px : Theme.radius;
+    background: !root.enabled ? Theme.control
+        : root.kind == ButtonKind.primary ? (touch.pressed ? Theme.accent-pressed : touch.has-hover ? Theme.accent-hover : Theme.accent)
+        : root.kind == ButtonKind.play ? (touch.pressed ? Theme.play-pressed : touch.has-hover ? Theme.play-hover : Theme.play)
+        : root.kind == ButtonKind.danger ? (touch.has-hover ? Theme.danger-hover : Theme.danger)
+        : root.kind == ButtonKind.ghost ? (touch.pressed ? Theme.control-pressed : touch.has-hover ? Theme.control : transparent)
+        : (touch.pressed ? Theme.control-pressed : touch.has-hover ? Theme.control-hover : Theme.control);
+    // Filled actions glow slightly in their own color: they are the thing to click.
+    drop-shadow-blur: root.enabled && (root.kind == ButtonKind.play || root.kind == ButtonKind.primary) ? (touch.has-hover ? 16px : 10px) : 0;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: !root.enabled ? transparent
+        : root.kind == ButtonKind.play ? Theme.play.with-alpha(0.35)
+        : root.kind == ButtonKind.primary ? Theme.accent.with-alpha(0.3)
+        : transparent;
+    animate background, drop-shadow-blur { duration: Theme.fast; }
+
+    layout := HorizontalLayout {
+        padding-left: root.icon-only ? 0 : root.size == ButtonSize.large ? 20px : root.size == ButtonSize.small ? 10px : 14px;
+        padding-right: root.icon-only ? 0 : root.size == ButtonSize.large ? 22px : root.size == ButtonSize.small ? 12px : 16px;
+        spacing: root.size == ButtonSize.large ? 10px : 8px;
+        alignment: center;
+
+        if root.loading: Spinner {
+            size: root.icon-size;
+            tint: root.fg;
+            y: (parent.height - self.height) / 2;
+        }
+        if !root.loading && root.icon.width > 0: Image {
+            source: root.icon;
+            colorize: root.fg;
+            width: root.icon-size;
+            height: root.icon-size;
+            y: (parent.height - self.height) / 2;
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.fg;
+            font-size: root.size == ButtonSize.large ? Theme.font-large : root.size == ButtonSize.small ? 13px : Theme.font-body;
+            font-weight: root.size == ButtonSize.large ? 700 : 600;
+            vertical-alignment: center;
+        }
+    }
+
+    tip-timer := Timer {
+        interval: 450ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            TooltipState.x = root.absolute-position.x;
+            TooltipState.y = root.absolute-position.y;
+            TooltipState.width = root.width;
+            TooltipState.height = root.height;
+            TooltipState.text = root.tooltip;
+        }
+    }
+
+    // Not disabled with the button, so disabled buttons can still explain themselves.
+    touch := TouchArea {
+        mouse-cursor: root.active ? pointer : default;
+        changed has-hover => {
+            if self.has-hover && root.tooltip != "" {
+                tip-timer.running = true;
+            } else {
+                root.hide-tooltip();
+            }
+        }
+        clicked => {
+            root.hide-tooltip();
+            if root.active {
+                root.clicked();
+            }
+        }
+    }
+}

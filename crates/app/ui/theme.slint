@@ -1,0 +1,85 @@
+// Every color, size and timing the UI uses. Components read only from here.
+//
+// Palette: deep ink-violet surfaces (calm, keeps artwork and skins the focus), axolotl
+// pink as the brand accent (selection, focus, links), and one green reserved for Play
+// so the most important action is recognizable everywhere at a glance.
+
+import { Palette } from "std-widgets.slint";
+
+export global Theme {
+    // 0 = follow the system, 1 = light, 2 = dark.
+    in-out property <int> mode: 0;
+    out property <bool> dark: mode == 0 ? Palette.color-scheme != ColorScheme.light : mode == 2;
+
+    // Surfaces, from back to front.
+    out property <color> bg: dark ? #0c0d14 : #f4f4f9;
+    out property <color> rail: dark ? #090a10 : #ebebf3;
+    out property <color> surface: dark ? #14151f : #ffffff;
+    out property <color> surface-hover: dark ? #1a1c28 : #f8f8fc;
+    // Popups, menus and dialogs.
+    out property <color> elevated: dark ? #1b1d2a : #ffffff;
+    out property <color> control: dark ? #1f2130 : #ececf4;
+    out property <color> control-hover: dark ? #282a3c : #e2e2ee;
+    out property <color> control-pressed: dark ? #303347 : #d6d7e6;
+    out property <color> border: dark ? #222436 : #e2e2ec;
+    out property <color> border-strong: dark ? #33364c : #c9cadb;
+    out property <color> overlay: dark ? #04050ab8 : #1a1b2a70;
+    out property <color> shadow: dark ? #00000080 : #2a2b4a26;
+
+    out property <color> text: dark ? #eeeef6 : #16172a;
+    out property <color> text-muted: dark ? #9c9eb6 : #585a74;
+    out property <color> text-faint: dark ? #64667e : #8c8ea6;
+
+    // Axolotl pink. Darker in light mode so text on white stays readable.
+    out property <color> accent: dark ? #ff7aa8 : #e2457f;
+    out property <color> accent-hover: dark ? #ff93b9 : #ec5a90;
+    out property <color> accent-pressed: dark ? #f0679a : #cc356d;
+    out property <color> accent-soft: dark ? #ff7aa822 : #e2457f1c;
+    out property <color> on-accent: dark ? #2c0618 : #ffffff;
+    out property <brush> accent-gradient: @linear-gradient(135deg, #ff8fb6 0%, #ff6f9c 100%);
+
+    // Reserved for Play, so it reads as "go" on every page.
+    out property <color> play: dark ? #3ddc84 : #1fae5b;
+    out property <color> play-hover: dark ? #5ae59a : #23c267;
+    out property <color> play-pressed: dark ? #2fc272 : #1a9a50;
+    out property <color> play-soft: dark ? #3ddc8420 : #1fae5b1c;
+    out property <color> on-play: dark ? #052814 : #ffffff;
+
+    out property <color> danger: dark ? #ff5c6c : #d93848;
+    out property <color> danger-hover: dark ? #ff7482 : #e54b5a;
+    out property <color> danger-soft: dark ? #ff5c6c1f : #d938481a;
+    out property <color> warning: dark ? #ffbe55 : #b9770e;
+    out property <color> warning-soft: dark ? #ffbe551c : #b9770e18;
+    out property <color> info: dark ? #6cc4ff : #1d7fc9;
+    out property <color> info-soft: dark ? #6cc4ff1c : #1d7fc91a;
+
+    // Placeholder blocks while content loads.
+    out property <color> skeleton: dark ? #1e2030 : #e6e6f0;
+
+    // Corners
+    out property <length> radius-sm: 6px;
+    out property <length> radius: 10px;
+    out property <length> radius-lg: 14px;
+    out property <length> radius-xl: 20px;
+
+    // Sizes
+    out property <length> control-height: 36px;
+    out property <length> control-height-lg: 44px;
+    out property <length> page-padding: 32px;
+    out property <length> rail-width: 76px;
+
+    // Type scale (1.2 ratio, tuned for Segoe UI)
+    out property <length> font-tiny: 11px;
+    out property <length> font-small: 12px;
+    out property <length> font-body: 14px;
+    out property <length> font-large: 16px;
+    out property <length> font-title: 20px;
+    out property <length> font-h1: 28px;
+    out property <length> font-display: 34px;
+    out property <string> font-mono: "Consolas";
+
+    // Motion: quick enough to never feel like waiting, slow enough to be seen.
+    out property <duration> fast: 110ms;
+    out property <duration> normal: 180ms;
+    out property <duration> slow: 280ms;
+}

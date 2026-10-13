@@ -1,0 +1,316 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page } from "../nav.slint";
+import { AppApi } from "../api/app.slint";
+import { AccountsApi } from "../api/accounts.slint";
+import { Avatar } from "avatar.slint";
+import { Button, ButtonKind } from "button.slint";
+import { MenuPanel, MenuItem, MenuSeparator } from "menu.slint";
+import { TooltipState } from "tooltip.slint";
+import { Spinner } from "spinner.slint";
+
+// Icon with its label underneath; the icon sits in a pill that fills when active.
+component RailItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> active;
+    callback clicked();
+
+    width: 64px;
+    height: 58px;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 48px;
+                height: 32px;
+                border-radius: 16px;
+                background: root.active ? Theme.accent-soft : touch.has-hover ? Theme.control : transparent;
+                animate background { duration: Theme.fast; }
+                Image {
+                    source: root.icon;
+                    colorize: root.active ? Theme.accent : touch.has-hover ? Theme.text : Theme.text-muted;
+                    width: 22px;
+                    height: 22px;
+                }
+            }
+        }
+        Text {
+            text: root.text;
+            color: root.active ? Theme.text : Theme.text-muted;
+            font-size: Theme.font-tiny;
+            font-weight: root.active ? 700 : 500;
+            horizontal-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// The app's navigation: a slim rail with the main places on top and the player and
+// settings at the bottom, where people expect account controls.
+export component NavRail inherits Rectangle {
+    width: Theme.rail-width;
+    background: Theme.rail;
+
+    Rectangle {
+        x: parent.width - 1px;
+        width: 1px;
+        background: Theme.border;
+    }
+
+    VerticalLayout {
+        padding-top: 16px;
+        padding-bottom: 14px;
+        spacing: 6px;
+
+        // Logo, also the way home.
+        HorizontalLayout {
+            alignment: center;
+            padding-bottom: 14px;
+            Image {
+                source: Icons.axi-icon;
+                width: 32px;
+                height: 32px;
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Nav.page = Page.home;
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            RailItem {
+                text: "Home";
+                icon: Icons.home;
+                active: Nav.page == Page.home;
+                clicked => {
+                    Nav.page = Page.home;
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            RailItem {
+                text: "Library";
+                icon: Icons.library;
+                active: Nav.page == Page.instances || Nav.page == Page.instance || Nav.page == Page.browse-content;
+                clicked => {
+                    Nav.page = Page.instances;
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            RailItem {
+                text: "Discover";
+                icon: Icons.compass;
+                active: Nav.page == Page.browse-modpacks;
+                clicked => {
+                    Nav.page = Page.browse-modpacks;
+                }
+            }
+        }
+
+        Rectangle { vertical-stretch: 1; }
+
+        // Background work: a spinner with a count; hover lists what is running.
+        if AppApi.tasks > 0: HorizontalLayout {
+            alignment: center;
+            padding-bottom: 6px;
+            activity := Rectangle {
+                width: 40px;
+                height: 40px;
+                border-radius: 20px;
+                background: activity-touch.has-hover ? Theme.control : transparent;
+                Spinner {
+                    size: 22px;
+                }
+                Rectangle {
+                    x: parent.width - self.width + 2px;
+                    y: -2px;
+                    width: max(18px, count.preferred-width + 8px);
+                    height: 18px;
+                    border-radius: 9px;
+                    background: Theme.accent;
+                    border-width: 2px;
+                    border-color: Theme.rail;
+                    count := Text {
+                        text: AppApi.tasks;
+                        color: Theme.on-accent;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                }
+                activity-touch := TouchArea {
+                    changed has-hover => {
+                        if self.has-hover {
+                            TooltipState.x = activity.absolute-position.x;
+                            TooltipState.y = activity.absolute-position.y;
+                            TooltipState.width = activity.width;
+                            TooltipState.height = activity.height;
+                            TooltipState.text = AppApi.task-text;
+                        } else {
+                            TooltipState.text = "";
+                        }
+                    }
+                }
+            }
+        }
+
+        // Settings: a large, centered target that is easy to hit.
+        HorizontalLayout {
+            alignment: center;
+            padding-bottom: 6px;
+            Rectangle {
+                width: 48px;
+                height: 48px;
+                border-radius: Theme.radius-lg;
+                background: Nav.page == Page.settings ? Theme.accent-soft : settings-touch.has-hover ? Theme.control : transparent;
+                animate background { duration: Theme.fast; }
+                Image {
+                    source: Icons.gear;
+                    colorize: Nav.page == Page.settings ? Theme.accent : settings-touch.has-hover ? Theme.text : Theme.text-muted;
+                    width: 24px;
+                    height: 24px;
+                    transform-rotation: settings-touch.has-hover ? 45deg : 0deg;
+                    animate transform-rotation { duration: Theme.slow; easing: ease-out; }
+                }
+                settings-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Nav.page = Page.settings;
+                    }
+                }
+            }
+        }
+        // The player: switch accounts or manage them.
+        HorizontalLayout {
+            alignment: center;
+            player := Rectangle {
+                width: 48px;
+                height: 48px;
+                border-radius: 24px;
+                background: player-touch.has-hover || Nav.page == Page.accounts ? Theme.control : transparent;
+                animate background { duration: Theme.fast; }
+
+                Avatar {
+                    initial: AccountsApi.has-active ? AppApi.player-initial : "?";
+                    head: AccountsApi.active.head;
+                    has-head: AccountsApi.has-active && AccountsApi.active.has-head;
+                    size: 34px;
+                }
+                // Online/offline dot.
+                if AccountsApi.has-active: Rectangle {
+                    x: parent.width - self.width - 6px;
+                    y: parent.height - self.height - 6px;
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: AccountsApi.active.microsoft ? Theme.play : Theme.text-faint;
+                    border-width: 2px;
+                    border-color: Theme.rail;
+                }
+
+                player-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        if AccountsApi.items.length == 0 {
+                            Nav.page = Page.accounts;
+                        } else {
+                            switcher.show();
+                        }
+                    }
+                }
+
+                switcher := PopupWindow {
+                    x: player.width + 14px;
+                    y: player.height - self.height + 4px;
+                    width: 250px;
+                    height: 5px * 2 + 30px + AccountsApi.items.length * 43px + 9px + 35px;
+
+                    MenuPanel {
+                        HorizontalLayout {
+                            height: 30px;
+                            padding-left: 10px;
+                            Text {
+                                text: "Play as";
+                                color: Theme.text-faint;
+                                font-size: Theme.font-small;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                        for account in AccountsApi.items: Rectangle {
+                            height: 42px;
+                            border-radius: Theme.radius-sm;
+                            background: row-touch.has-hover ? Theme.control-hover : transparent;
+                            row-touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    AccountsApi.select(account.id);
+                                    switcher.close();
+                                }
+                            }
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 10px;
+                                spacing: 10px;
+                                Avatar {
+                                    initial: account.initial;
+                                    head: account.head;
+                                    has-head: account.has-head;
+                                    size: 28px;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    horizontal-stretch: 1;
+                                    Text {
+                                        text: account.name;
+                                        color: Theme.text;
+                                        font-size: Theme.font-body;
+                                        font-weight: account.active ? 700 : 500;
+                                        overflow: elide;
+                                    }
+                                    Text {
+                                        text: account.microsoft ? "Microsoft" : "Offline";
+                                        color: Theme.text-faint;
+                                        font-size: Theme.font-tiny;
+                                    }
+                                }
+                                if account.active: Image {
+                                    source: Icons.check;
+                                    colorize: Theme.accent;
+                                    width: 16px;
+                                    height: 16px;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+                        MenuSeparator { }
+                        MenuItem {
+                            text: "Manage accounts";
+                            icon: Icons.user;
+                            clicked => {
+                                Nav.page = Page.accounts;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}

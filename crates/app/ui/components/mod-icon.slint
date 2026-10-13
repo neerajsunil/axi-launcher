@@ -1,0 +1,30 @@
+import { Theme } from "../theme.slint";
+
+// A mod's logo, or its initial while the logo loads (or when it has none).
+export component ModIcon inherits Rectangle {
+    in property <image> icon;
+    in property <bool> has-icon;
+    in property <string> initial;
+    in property <length> size: 40px;
+
+    width: root.size;
+    height: root.size;
+    border-radius: Theme.radius;
+    background: Theme.control;
+    clip: true;
+
+    if root.has-icon: Image {
+        source: root.icon;
+        width: parent.width;
+        height: parent.height;
+        image-fit: cover;
+    }
+    if !root.has-icon: Text {
+        text: root.initial;
+        color: Theme.text-muted;
+        font-size: root.size * 0.42;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}

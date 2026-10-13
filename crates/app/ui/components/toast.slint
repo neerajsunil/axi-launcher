@@ -1,0 +1,83 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+
+// Short-lived notification in the bottom-right corner.
+export component Toast inherits Rectangle {
+    in property <string> text;
+    in property <bool> error;
+    callback dismissed();
+
+    width: min(440px, layout.preferred-width);
+    height: layout.preferred-height;
+    background: Theme.elevated;
+    border-radius: Theme.radius-lg;
+    border-width: 1px;
+    border-color: root.error ? Theme.danger.with-alpha(0.6) : Theme.border-strong;
+    drop-shadow-blur: 28px;
+    drop-shadow-offset-y: 8px;
+    drop-shadow-color: Theme.shadow;
+    clip: true;
+
+    property <bool> shown;
+    init => {
+        root.shown = true;
+    }
+    opacity: root.shown ? 1 : 0;
+    animate opacity { duration: Theme.normal; }
+
+    // A new message gets the full time again.
+    changed text => {
+        timer.running = false;
+        timer.running = root.text != "";
+    }
+
+    timer := Timer {
+        interval: root.error ? 8s : 3s;
+        running: root.text != "";
+        triggered => {
+            root.dismissed();
+        }
+    }
+
+    // Colored edge: green for done, red for problems.
+    Rectangle {
+        x: 0;
+        width: 4px;
+        background: root.error ? Theme.danger : Theme.play;
+    }
+
+    layout := HorizontalLayout {
+        padding: 14px;
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 12px;
+
+        Rectangle {
+            width: 26px;
+            height: 26px;
+            border-radius: 13px;
+            background: root.error ? Theme.danger-soft : Theme.play-soft;
+            y: (parent.height - self.height) / 2;
+            Image {
+                source: root.error ? Icons.alert : Icons.check;
+                colorize: root.error ? Theme.danger : Theme.play;
+                width: 15px;
+                height: 15px;
+            }
+        }
+        Text {
+            text: root.text;
+            color: Theme.text;
+            font-size: Theme.font-body;
+            wrap: word-wrap;
+            vertical-alignment: center;
+        }
+    }
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.dismissed();
+        }
+    }
+}

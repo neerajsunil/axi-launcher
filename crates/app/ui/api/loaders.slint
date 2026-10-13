@@ -1,0 +1,15 @@
+import { LoaderVersionItem } from "types.slint";
+
+// Implemented in src/controllers/loaders.rs.
+export global LoadersApi {
+    // Versions for the last query; `key` says which one ("<loader index>|<game version>").
+    in property <[LoaderVersionItem]> versions;
+    in property <string> key;
+    // Newest stable version, and dropdown labels: "Recommended (...)" followed by every version.
+    in property <string> recommended;
+    in property <[string]> labels;
+    in property <bool> loading;
+    in property <string> error;
+
+    callback query(int /* loader index */, string /* game version */);
+}

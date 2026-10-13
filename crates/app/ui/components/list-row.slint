@@ -1,0 +1,92 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Button, ButtonKind } from "button.slint";
+
+// A row in a dialog list: a title followed by badges (the children), a muted detail
+// line, and an action button on the right, optionally with a delete button that asks
+// for a second click before firing `remove`.
+export component ListRow inherits Rectangle {
+    in property <string> title;
+    in property <string> detail;
+    // Greys out the title, e.g. for versions that don't fit.
+    in property <bool> muted;
+    in property <bool> highlighted;
+    // Empty hides the button.
+    in property <string> action-text;
+    in property <image> action-icon;
+    in property <ButtonKind> action-kind: ButtonKind.primary;
+    in property <bool> action-enabled: true;
+    callback action();
+    in property <bool> removable;
+    in property <string> remove-tooltip: "Delete";
+    callback remove();
+
+    property <bool> confirming;
+
+    height: 56px;
+    border-radius: Theme.radius;
+    background: root.highlighted ? Theme.accent-soft : touch.has-hover ? Theme.surface-hover : transparent;
+
+    // Leaving the row cancels a pending delete.
+    touch := TouchArea {
+        changed has-hover => {
+            if !self.has-hover {
+                root.confirming = false;
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 8px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Text {
+                    text: root.title;
+                    color: root.muted ? Theme.text-muted : Theme.text;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+                @children
+            }
+            Text {
+                text: root.detail;
+                color: Theme.text-faint;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+        }
+        if root.removable: Button {
+            icon: Icons.trash;
+            text: root.confirming ? "Delete" : "";
+            tooltip: root.confirming ? "" : root.remove-tooltip;
+            kind: root.confirming ? ButtonKind.danger : ButtonKind.ghost;
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                if root.confirming {
+                    root.confirming = false;
+                    root.remove();
+                } else {
+                    root.confirming = true;
+                }
+            }
+        }
+        if root.action-text != "": Button {
+            text: root.action-text;
+            icon: root.action-icon;
+            kind: root.action-kind;
+            enabled: root.action-enabled;
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                root.action();
+            }
+        }
+    }
+}

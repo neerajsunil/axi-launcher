@@ -1,0 +1,494 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { ModsApi, ContentKinds } from "../api/mods.slint";
+import { DescriptionBlock, ModVersionItem } from "../api/types.slint";
+import { Button, ButtonKind, ButtonSize } from "button.slint";
+import { Card, Badge } from "card.slint";
+import { ModIcon } from "mod-icon.slint";
+import { ScrollView } from "scroll-view.slint";
+import { Tabs } from "tabs.slint";
+import { Skeleton, SkeletonText, SkeletonList, Delayed } from "skeleton.slint";
+import { EmptyState } from "empty-state.slint";
+import { InstalledPill } from "result-row.slint";
+
+// One piece of a project's description.
+component BlockView inherits VerticalLayout {
+    in property <DescriptionBlock> block;
+
+    if root.block.kind == 0: Text {
+        text: root.block.text;
+        color: Theme.text;
+        font-size: Theme.font-title;
+        font-weight: 700;
+        wrap: word-wrap;
+    }
+    if root.block.kind == 1: Text {
+        text: root.block.text;
+        color: Theme.text;
+        font-size: Theme.font-body;
+        wrap: word-wrap;
+    }
+    if root.block.kind == 2: HorizontalLayout {
+        spacing: 8px;
+        padding-left: 4px;
+        Text {
+            text: "•";
+            color: Theme.accent;
+            font-size: Theme.font-body;
+            font-weight: 700;
+        }
+        Text {
+            text: root.block.text;
+            color: Theme.text;
+            font-size: Theme.font-body;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+    }
+    // Shown at its own size, or narrower to fit.
+    if root.block.kind == 3 && root.block.has-image: Rectangle {
+        property <length> shown-width: min(self.width, root.block.image.width * 1px);
+        height: self.shown-width * root.block.image.height / max(1, root.block.image.width);
+        Image {
+            x: 0;
+            width: parent.shown-width;
+            height: parent.height;
+            source: root.block.image;
+            image-fit: contain;
+        }
+    }
+    if root.block.kind == 4: Rectangle {
+        background: Theme.control;
+        border-radius: Theme.radius;
+        VerticalLayout {
+            padding: 12px;
+            Text {
+                text: root.block.text;
+                color: Theme.text;
+                font-family: Theme.font-mono;
+                font-size: Theme.font-small;
+                wrap: word-wrap;
+            }
+        }
+    }
+    if root.block.kind == 5: Rectangle {
+        height: 1px;
+        background: Theme.border;
+    }
+}
+
+// A label and value in the details card.
+component InfoRow inherits HorizontalLayout {
+    in property <string> label;
+    in property <string> value;
+    spacing: 12px;
+    Text {
+        text: root.label;
+        color: Theme.text-muted;
+        font-size: Theme.font-small;
+        width: 80px;
+    }
+    Text {
+        text: root.value;
+        color: Theme.text;
+        font-size: Theme.font-small;
+        font-weight: 600;
+        wrap: word-wrap;
+        horizontal-stretch: 1;
+    }
+}
+
+component VersionRow inherits Card {
+    in property <ModVersionItem> item;
+    // Versions can be installed one by one (not for modpacks).
+    in property <bool> installable;
+    in property <bool> busy;
+    callback install();
+
+    HorizontalLayout {
+        padding: 12px;
+        padding-left: 16px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Text {
+                    text: root.item.version;
+                    color: Theme.text;
+                    font-size: Theme.font-body;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+                Badge {
+                    text: root.item.stable ? "Release" : "Beta";
+                    text-color: root.item.stable ? Theme.accent : Theme.warning;
+                    fill: root.item.stable ? Theme.accent-soft : Theme.control;
+                    y: (parent.height - self.height) / 2;
+                }
+                if root.installable && root.item.compatible: Badge {
+                    text: "Fits this instance";
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            Text {
+                text: root.item.detail + (root.item.date != "" ? " · " + root.item.date : "");
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+        }
+        if root.installable: Button {
+            text: "Install";
+            icon: Icons.download;
+            kind: root.item.compatible ? ButtonKind.secondary : ButtonKind.ghost;
+            enabled: !root.busy;
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                root.install();
+            }
+        }
+    }
+}
+
+// A Modrinth project's page: header with install, description / versions / gallery, and a
+// side panel with stats and links. The browse page shows it over its search results.
+export component ProjectDetails inherits Rectangle {
+    in property <int> kind;
+    in property <bool> allow-reinstall;
+    in property <bool> install-enabled: true;
+    callback install(string /* project id */);
+    // Load the project again after an error.
+    callback retry();
+
+    property <int> tab: 0;
+    property <bool> has-gallery: ModsApi.details-gallery.length > 0;
+
+    background: Theme.bg;
+    // Swallow clicks so the hidden results underneath never get them.
+    TouchArea { }
+
+    VerticalLayout {
+        spacing: 18px;
+
+        HorizontalLayout {
+            spacing: 8px;
+            Button {
+                text: "Back to results";
+                icon: Icons.chevron-left;
+                kind: ButtonKind.ghost;
+                clicked => {
+                    ModsApi.details-open = false;
+                    root.tab = 0;
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            if ModsApi.details.page-url != "": Button {
+                text: "Open on Modrinth";
+                icon: Icons.external-link;
+                kind: ButtonKind.ghost;
+                clicked => {
+                    ModsApi.open-url(ModsApi.details.page-url);
+                }
+            }
+        }
+
+        // Header
+        HorizontalLayout {
+            spacing: 18px;
+            ModIcon {
+                icon: ModsApi.details.has-icon ? ModsApi.details.icon : ModsApi.details-hit.icon;
+                has-icon: ModsApi.details.has-icon || ModsApi.details-hit.has-icon;
+                initial: ModsApi.details-hit.initial;
+                size: 76px;
+                y: (parent.height - self.height) / 2;
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                horizontal-stretch: 1;
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: start;
+                    Text {
+                        text: ModsApi.details.title != "" ? ModsApi.details.title : ModsApi.details-hit.title;
+                        color: Theme.text;
+                        font-size: Theme.font-h1;
+                        font-weight: 700;
+                        overflow: elide;
+                    }
+                    if ModsApi.details.author != "": Text {
+                        text: "by " + ModsApi.details.author;
+                        color: Theme.text-faint;
+                        font-size: Theme.font-body;
+                        vertical-alignment: bottom;
+                    }
+                }
+                Text {
+                    text: ModsApi.details.summary != "" ? ModsApi.details.summary : ModsApi.details-hit.description;
+                    color: Theme.text-muted;
+                    font-size: Theme.font-body;
+                    wrap: word-wrap;
+                    max-height: 40px;
+                    overflow: elide;
+                }
+            }
+            if ModsApi.details-hit.project-id != "": VerticalLayout {
+                alignment: center;
+                spacing: 6px;
+                width: 150px;
+                if ModsApi.details-hit.installed && !root.allow-reinstall: InstalledPill { }
+                if !ModsApi.details-hit.installed || root.allow-reinstall: Button {
+                    text: ModsApi.details-hit.installing ? "Installing" : ModsApi.details-hit.installed ? "Install again" : "Install";
+                    icon: Icons.download;
+                    kind: ModsApi.details-hit.installed ? ButtonKind.secondary : ButtonKind.primary;
+                    size: ButtonSize.large;
+                    loading: ModsApi.details-hit.installing;
+                    enabled: root.install-enabled;
+                    clicked => {
+                        root.install(ModsApi.details-hit.project-id);
+                    }
+                }
+                Text {
+                    text: root.kind == ContentKinds.modpacks ? "Newest version, as a new instance" : "Newest version that fits";
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        Tabs {
+            tabs: root.has-gallery ? ["Description", "Versions", "Gallery"] : ["Description", "Versions"];
+            current <=> root.tab;
+        }
+
+        HorizontalLayout {
+            spacing: 20px;
+            vertical-stretch: 1;
+
+            Rectangle {
+                horizontal-stretch: 1;
+
+                // Placeholders shaped like the tab that is loading.
+                if ModsApi.details-loading && root.tab != 1: Delayed {
+                    delay: 60ms;
+                    VerticalLayout {
+                        spacing: 22px;
+                        alignment: start;
+                        Skeleton {
+                            width: 45%;
+                            height: 20px;
+                        }
+                        SkeletonText {
+                            lines: 4;
+                        }
+                        Skeleton {
+                            height: 180px;
+                            border-radius: Theme.radius-lg;
+                            phase: 0.3;
+                        }
+                        SkeletonText {
+                            lines: 3;
+                        }
+                    }
+                }
+                if ModsApi.details-loading && root.tab == 1: Delayed {
+                    delay: 60ms;
+                    SkeletonList {
+                        rows: 6;
+                        row-height: 64px;
+                        icon-size: 0px;
+                        button: root.kind != ContentKinds.modpacks;
+                        cards: true;
+                        gap: 8px;
+                    }
+                }
+                if !ModsApi.details-loading && ModsApi.details-error != "": EmptyState {
+                    icon: Icons.alert;
+                    tint: Theme.danger;
+                    title: "Couldn't load this project";
+                    text: ModsApi.details-error;
+                    Button {
+                        text: "Try again";
+                        icon: Icons.refresh;
+                        kind: ButtonKind.primary;
+                        clicked => {
+                            root.retry();
+                        }
+                    }
+                }
+
+                if !ModsApi.details-loading && ModsApi.details-error == "" && root.tab == 0: ScrollView {
+                    spacing: 14px;
+                    for block in ModsApi.details-blocks: BlockView {
+                        block: block;
+                    }
+                    if ModsApi.details-blocks.length == 0 && ModsApi.details-error == "": Text {
+                        text: "The author hasn't written a description.";
+                        color: Theme.text-muted;
+                    }
+                    Rectangle { height: Theme.page-padding; }
+                }
+
+                if !ModsApi.details-loading && ModsApi.details-error == "" && root.tab == 1: ScrollView {
+                    spacing: 8px;
+                    for version in ModsApi.details-versions: VersionRow {
+                        item: version;
+                        installable: root.kind != ContentKinds.modpacks;
+                        busy: ModsApi.details-hit.installing || !root.install-enabled;
+                        install => {
+                            ModsApi.details-install-version(version.file-id);
+                        }
+                    }
+                    if ModsApi.details-versions-more: HorizontalLayout {
+                        alignment: center;
+                        Button {
+                            text: "Show more";
+                            kind: ButtonKind.ghost;
+                            clicked => {
+                                ModsApi.details-more-versions();
+                            }
+                        }
+                    }
+                    if ModsApi.details-versions.length == 0 && ModsApi.details-error == "": Text {
+                        text: "No versions published yet.";
+                        color: Theme.text-muted;
+                    }
+                    Rectangle { height: Theme.page-padding; }
+                }
+
+                if !ModsApi.details-loading && ModsApi.details-error == "" && root.tab == 2: ScrollView {
+                    spacing: 16px;
+                    for picture in ModsApi.details-gallery: Card {
+                        VerticalLayout {
+                            padding: 10px;
+                            spacing: 8px;
+                            if picture.has-image: Rectangle {
+                                height: self.width * picture.image.height / max(1, picture.image.width);
+                                border-radius: Theme.radius;
+                                clip: true;
+                                Image {
+                                    source: picture.image;
+                                    width: parent.width;
+                                    height: parent.height;
+                                    image-fit: contain;
+                                }
+                                TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        ModsApi.open-url(picture.url);
+                                    }
+                                }
+                            }
+                            if !picture.has-image: Rectangle {
+                                height: 200px;
+                                border-radius: Theme.radius;
+                                background: Theme.control;
+                            }
+                            if picture.label != "": Text {
+                                text: picture.label;
+                                color: Theme.text-muted;
+                                font-size: Theme.font-small;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                    Rectangle { height: Theme.page-padding; }
+                }
+            }
+
+            // Side panel
+            ScrollView {
+                width: 270px;
+                spacing: 14px;
+
+                Card {
+                    VerticalLayout {
+                        padding: 16px;
+                        spacing: 10px;
+                        Text {
+                            text: "Details";
+                            color: Theme.text;
+                            font-size: Theme.font-large;
+                            font-weight: 700;
+                        }
+                        if ModsApi.details-loading: VerticalLayout {
+                            spacing: 12px;
+                            for i in 5: HorizontalLayout {
+                                spacing: 12px;
+                                Skeleton {
+                                    phase: i * 0.1;
+                                    width: 64px;
+                                    height: 10px;
+                                }
+                                Skeleton {
+                                    phase: i * 0.1 + 0.05;
+                                    width: 90px + mod(i * 37, 50) * 1px;
+                                    height: 10px;
+                                }
+                            }
+                        }
+                        if !ModsApi.details-loading && ModsApi.details.downloads != "": InfoRow {
+                            label: "Downloads";
+                            value: ModsApi.details.downloads;
+                        }
+                        if !ModsApi.details-loading && ModsApi.details.followers != "": InfoRow {
+                            label: "Followers";
+                            value: ModsApi.details.followers;
+                        }
+                        if ModsApi.details.updated != "": InfoRow {
+                            label: "Updated";
+                            value: ModsApi.details.updated;
+                        }
+                        if ModsApi.details.published != "": InfoRow {
+                            label: "Published";
+                            value: ModsApi.details.published;
+                        }
+                        if ModsApi.details.license != "": InfoRow {
+                            label: "License";
+                            value: ModsApi.details.license;
+                        }
+                        if ModsApi.details.environment != "": InfoRow {
+                            label: "Runs on";
+                            value: ModsApi.details.environment;
+                        }
+                        if ModsApi.details.categories != "": InfoRow {
+                            label: "Categories";
+                            value: ModsApi.details.categories;
+                        }
+                    }
+                }
+
+                if ModsApi.details-links.length > 0: Card {
+                    VerticalLayout {
+                        padding: 16px;
+                        padding-bottom: 10px;
+                        spacing: 4px;
+                        Text {
+                            text: "Links";
+                            color: Theme.text;
+                            font-size: Theme.font-large;
+                            font-weight: 700;
+                        }
+                        for link in ModsApi.details-links: HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: link.label;
+                                icon: Icons.external-link;
+                                kind: ButtonKind.ghost;
+                                clicked => {
+                                    ModsApi.open-url(link.url);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

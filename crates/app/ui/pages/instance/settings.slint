@@ -1,0 +1,206 @@
+import { Theme } from "../../theme.slint";
+import { Icons } from "../../icons.slint";
+import { InstancesApi } from "../../api/instances.slint";
+import { InstanceSettingsData } from "../../api/types.slint";
+import { Button, ButtonKind } from "../../components/button.slint";
+import { TextField, TextArea } from "../../components/text-field.slint";
+import { Toggle } from "../../components/toggle.slint";
+import { Section, FormRow } from "../../components/card.slint";
+import { ScrollView } from "../../components/scroll-view.slint";
+import { JavaField } from "../../components/java-field.slint";
+
+// Per-instance settings. Each group can override the global settings.
+export component InstanceSettings inherits Rectangle {
+    // Reload the form whenever Rust sends new data (selection change, after saving).
+    property <InstanceSettingsData> source: InstancesApi.settings;
+    changed source => {
+        root.load();
+    }
+    init => {
+        root.load();
+    }
+
+    property <string> name;
+    property <string> group;
+    property <string> notes;
+    property <bool> java-override;
+    property <string> java-path;
+    property <bool> memory-override;
+    property <string> min-memory;
+    property <string> max-memory;
+    property <bool> jvm-override;
+    property <string> jvm-args;
+    property <bool> window-override;
+    property <string> win-width;
+    property <string> win-height;
+    property <bool> fullscreen;
+
+    function load() {
+        root.name = root.source.name;
+        root.group = root.source.group;
+        root.notes = root.source.notes;
+        root.java-override = root.source.java-override;
+        root.java-path = root.source.java-path;
+        root.memory-override = root.source.memory-override;
+        root.min-memory = root.source.min-memory;
+        root.max-memory = root.source.max-memory;
+        root.jvm-override = root.source.jvm-override;
+        root.jvm-args = root.source.jvm-args;
+        root.window-override = root.source.window-override;
+        root.win-width = root.source.width;
+        root.win-height = root.source.height;
+        root.fullscreen = root.source.fullscreen;
+    }
+
+    function draft() -> InstanceSettingsData {
+        {
+            name: root.name,
+            group: root.group,
+            notes: root.notes,
+            java-override: root.java-override,
+            java-path: root.java-path,
+            memory-override: root.memory-override,
+            min-memory: root.min-memory,
+            max-memory: root.max-memory,
+            jvm-override: root.jvm-override,
+            jvm-args: root.jvm-args,
+            window-override: root.window-override,
+            width: root.win-width,
+            height: root.win-height,
+            fullscreen: root.fullscreen,
+        }
+    }
+
+    property <bool> dirty: root.draft() != root.source;
+
+    VerticalLayout {
+        spacing: 12px;
+
+        ScrollView {
+            vertical-stretch: 1;
+            spacing: 16px;
+            content-padding: 2px;
+
+            Section {
+                title: "General";
+                FormRow {
+                    label: "Name";
+                    TextField {
+                        text <=> root.name;
+                    }
+                }
+                FormRow {
+                    label: "Group";
+                    hint: "Optional label shown on the card";
+                    TextField {
+                        text <=> root.group;
+                        placeholder: "e.g. Survival";
+                    }
+                }
+                FormRow {
+                    label: "Notes";
+                    TextArea {
+                        text <=> root.notes;
+                        placeholder: "Anything worth remembering about this instance";
+                    }
+                }
+            }
+
+            Section {
+                title: "Java";
+                description: "Use the global Java settings unless overridden here.";
+                Toggle {
+                    text: "Override Java installation";
+                    checked <=> root.java-override;
+                }
+                if root.java-override: FormRow {
+                    label: "Java";
+                    hint: "Automatic downloads the version the game needs";
+                    JavaField {
+                        target: "instance";
+                        path <=> root.java-path;
+                    }
+                }
+                Toggle {
+                    text: "Override memory";
+                    checked <=> root.memory-override;
+                }
+                if root.memory-override: FormRow {
+                    label: "Memory (MB)";
+                    hint: "Minimum / maximum";
+                    TextField {
+                        text <=> root.min-memory;
+                        input-type: number;
+                    }
+                    TextField {
+                        text <=> root.max-memory;
+                        input-type: number;
+                    }
+                }
+                Toggle {
+                    text: "Override JVM arguments";
+                    checked <=> root.jvm-override;
+                }
+                if root.jvm-override: FormRow {
+                    label: "JVM arguments";
+                    TextField {
+                        text <=> root.jvm-args;
+                        font-family: Theme.font-mono;
+                        placeholder: "-XX:+UseG1GC";
+                    }
+                }
+            }
+
+            Section {
+                title: "Game window";
+                Toggle {
+                    text: "Override window size";
+                    checked <=> root.window-override;
+                }
+                if root.window-override: FormRow {
+                    label: "Size";
+                    hint: "Width × height";
+                    TextField {
+                        text <=> root.win-width;
+                        input-type: number;
+                    }
+                    TextField {
+                        text <=> root.win-height;
+                        input-type: number;
+                    }
+                }
+                if root.window-override: Toggle {
+                    text: "Start in fullscreen";
+                    checked <=> root.fullscreen;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+            spacing: 10px;
+            padding-bottom: Theme.page-padding;
+            if root.dirty: Text {
+                text: "Unsaved changes";
+                color: Theme.warning;
+                font-size: Theme.font-small;
+                vertical-alignment: center;
+            }
+            Button {
+                text: "Revert";
+                enabled: root.dirty;
+                clicked => {
+                    root.load();
+                }
+            }
+            Button {
+                text: "Save";
+                kind: ButtonKind.primary;
+                enabled: root.dirty;
+                clicked => {
+                    InstancesApi.save-settings(InstancesApi.selected.id, root.draft());
+                }
+            }
+        }
+    }
+}

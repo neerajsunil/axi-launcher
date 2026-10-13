@@ -1,0 +1,50 @@
+import { Theme } from "../theme.slint";
+
+// A row of mutually exclusive options. `current` is the selected index.
+export component Segmented inherits Rectangle {
+    in property <[string]> options;
+    in-out property <int> current;
+    callback selected(int);
+
+    height: Theme.control-height;
+    horizontal-stretch: 0;
+    border-radius: Theme.radius;
+    background: Theme.control;
+
+    HorizontalLayout {
+        padding: 3px;
+        spacing: 3px;
+
+        for option[i] in root.options: Rectangle {
+            property <bool> active: i == root.current;
+            border-radius: Theme.radius-sm;
+            background: active ? Theme.surface : touch.has-hover ? Theme.control-hover : transparent;
+            drop-shadow-blur: active ? 6px : 0;
+            drop-shadow-offset-y: 1px;
+            drop-shadow-color: Theme.shadow;
+            animate background { duration: Theme.fast; }
+
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                Text {
+                    text: option;
+                    color: active ? Theme.text : Theme.text-muted;
+                    font-size: Theme.font-body;
+                    font-weight: active ? 700 : 500;
+                    vertical-alignment: center;
+                }
+            }
+
+            touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    if !active {
+                        root.current = i;
+                        root.selected(i);
+                    }
+                }
+            }
+        }
+    }
+}

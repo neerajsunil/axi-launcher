@@ -1,0 +1,256 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { SettingsApi } from "../api/settings.slint";
+import { GlobalSettingsData } from "../api/types.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { TextField } from "../components/text-field.slint";
+import { Toggle } from "../components/toggle.slint";
+import { Section, FormRow } from "../components/card.slint";
+import { ScrollView } from "../components/scroll-view.slint";
+import { Segmented } from "../components/segmented.slint";
+import { JavaField } from "../components/java-field.slint";
+import { ModsApi } from "../api/mods.slint";
+import { PageHeader } from "../components/page.slint";
+
+// Launcher-wide settings; instances use these unless they override them.
+export component SettingsPage inherits Rectangle {
+    property <GlobalSettingsData> source: SettingsApi.current;
+    changed source => {
+        root.load();
+    }
+    init => {
+        root.load();
+    }
+
+    property <int> theme;
+    property <string> java-path;
+    property <string> min-memory;
+    property <string> max-memory;
+    property <string> jvm-args;
+    property <string> win-width;
+    property <string> win-height;
+    property <bool> fullscreen;
+    property <string> downloads;
+    property <bool> hide-on-launch;
+    property <string> curseforge-key;
+    property <string> msa-client-id;
+
+    function load() {
+        root.theme = root.source.theme;
+        root.java-path = root.source.java-path;
+        root.min-memory = root.source.min-memory;
+        root.max-memory = root.source.max-memory;
+        root.jvm-args = root.source.jvm-args;
+        root.win-width = root.source.width;
+        root.win-height = root.source.height;
+        root.fullscreen = root.source.fullscreen;
+        root.downloads = root.source.downloads;
+        root.hide-on-launch = root.source.hide-on-launch;
+        root.curseforge-key = root.source.curseforge-key;
+        root.msa-client-id = root.source.msa-client-id;
+    }
+
+    function draft() -> GlobalSettingsData {
+        {
+            theme: root.theme,
+            java-path: root.java-path,
+            min-memory: root.min-memory,
+            max-memory: root.max-memory,
+            jvm-args: root.jvm-args,
+            width: root.win-width,
+            height: root.win-height,
+            fullscreen: root.fullscreen,
+            downloads: root.downloads,
+            hide-on-launch: root.hide-on-launch,
+            curseforge-key: root.curseforge-key,
+            msa-client-id: root.msa-client-id,
+            data-dir: root.source.data-dir,
+        }
+    }
+
+    property <bool> dirty: root.draft() != root.source;
+
+    VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 22px;
+
+        PageHeader {
+            title: "Settings";
+            subtitle: "Defaults for every instance. Each instance can override them.";
+            if root.dirty: Text {
+                text: "Unsaved changes";
+                color: Theme.warning;
+                font-size: Theme.font-small;
+                vertical-alignment: center;
+            }
+            Button {
+                text: "Revert";
+                enabled: root.dirty;
+                clicked => {
+                    root.load();
+                }
+            }
+            Button {
+                text: "Save";
+                kind: ButtonKind.primary;
+                enabled: root.dirty;
+                clicked => {
+                    SettingsApi.save(root.draft());
+                }
+            }
+        }
+
+        ScrollView {
+            vertical-stretch: 1;
+            spacing: 16px;
+            content-padding: 2px;
+
+            Section {
+                title: "Appearance";
+                FormRow {
+                    label: "Theme";
+                    hint: "System follows Windows' light or dark mode";
+                    Segmented {
+                        options: ["System", "Light", "Dark"];
+                        current <=> root.theme;
+                    }
+                    Rectangle {
+                        horizontal-stretch: 1;
+                    }
+                }
+            }
+
+            Section {
+                title: "Java";
+                description: "Defaults for every instance.";
+                FormRow {
+                    label: "Java";
+                    hint: "Automatic downloads the version each game needs";
+                    JavaField {
+                        target: "settings";
+                        path <=> root.java-path;
+                    }
+                }
+                FormRow {
+                    label: "Memory (MB)";
+                    hint: "Minimum / maximum";
+                    TextField {
+                        text <=> root.min-memory;
+                        input-type: number;
+                    }
+                    TextField {
+                        text <=> root.max-memory;
+                        input-type: number;
+                    }
+                }
+                FormRow {
+                    label: "JVM arguments";
+                    hint: "Separated by spaces";
+                    TextField {
+                        text <=> root.jvm-args;
+                        font-family: Theme.font-mono;
+                        placeholder: "-XX:+UseG1GC";
+                    }
+                }
+            }
+
+            Section {
+                title: "Game window";
+                FormRow {
+                    label: "Size";
+                    hint: "Width × height";
+                    TextField {
+                        text <=> root.win-width;
+                        input-type: number;
+                    }
+                    TextField {
+                        text <=> root.win-height;
+                        input-type: number;
+                    }
+                }
+                Toggle {
+                    text: "Start in fullscreen";
+                    checked <=> root.fullscreen;
+                }
+            }
+
+            Section {
+                title: "Mods";
+                description: SettingsApi.built-in-curseforge-key
+                    ? "Modrinth and CurseForge both work out of the box."
+                    : "Modrinth works out of the box. CurseForge only serves apps that have an API key; create a free one at console.curseforge.com.";
+                FormRow {
+                    label: "CurseForge API key";
+                    hint: SettingsApi.built-in-curseforge-key ? "Optional; overrides the built-in one" : "Required for CurseForge";
+                    TextField {
+                        text <=> root.curseforge-key;
+                        font-family: Theme.font-mono;
+                        placeholder: SettingsApi.built-in-curseforge-key ? "Built-in" : "Not set";
+                    }
+                    Button {
+                        text: "Get a key";
+                        icon: Icons.external-link;
+                        clicked => {
+                            ModsApi.open-url("https://console.curseforge.com/");
+                        }
+                    }
+                }
+            }
+
+            Section {
+                title: "Microsoft sign-in";
+                description: "Signing in needs an Azure app registration (personal accounts, public client flows enabled) that Mojang has approved for Minecraft.";
+                FormRow {
+                    label: "Azure client ID";
+                    hint: SettingsApi.built-in-client-id ? "Optional; overrides the built-in one" : "Required for Microsoft accounts";
+                    TextField {
+                        text <=> root.msa-client-id;
+                        font-family: Theme.font-mono;
+                        placeholder: SettingsApi.built-in-client-id ? "Built-in" : "Not set";
+                    }
+                    Button {
+                        text: "Register an app";
+                        icon: Icons.external-link;
+                        clicked => {
+                            ModsApi.open-url("https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade");
+                        }
+                    }
+                }
+            }
+
+            Section {
+                title: "Launcher";
+                FormRow {
+                    label: "Parallel downloads";
+                    hint: "1–64";
+                    TextField {
+                        text <=> root.downloads;
+                        input-type: number;
+                    }
+                }
+                Toggle {
+                    text: "Hide the launcher while playing";
+                    checked <=> root.hide-on-launch;
+                }
+                FormRow {
+                    label: "Data folder";
+                    hint: "Instances, libraries, assets and Java";
+                    TextField {
+                        text: root.source.data-dir;
+                        enabled: false;
+                    }
+                    Button {
+                        text: "Open";
+                        icon: Icons.folder;
+                        clicked => {
+                            SettingsApi.open-data-dir();
+                        }
+                    }
+                }
+            }
+
+            Rectangle { height: Theme.page-padding; }
+        }
+    }
+}

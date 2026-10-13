@@ -1,0 +1,83 @@
+import { Theme } from "../../theme.slint";
+import { Icons } from "../../icons.slint";
+import { InstancesApi } from "../../api/instances.slint";
+import { Button, ButtonKind } from "../../components/button.slint";
+import { Toggle } from "../../components/toggle.slint";
+import { ScrollView } from "../../components/scroll-view.slint";
+
+// Live output of the game.
+export component InstanceLogs inherits VerticalLayout {
+    property <int> line-count: InstancesApi.logs.length;
+    property <bool> follow: true;
+    changed line-count => {
+        if root.follow {
+            view.scroll-to-bottom();
+        }
+    }
+
+    spacing: 12px;
+    padding-bottom: Theme.page-padding;
+
+    HorizontalLayout {
+        spacing: 10px;
+        Toggle {
+            text: "Follow output";
+            checked <=> root.follow;
+            y: (parent.height - self.height) / 2;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        Button {
+            text: "Open log file";
+            icon: Icons.file;
+            clicked => {
+                InstancesApi.open-log(InstancesApi.selected.id);
+            }
+        }
+        Button {
+            text: "Clear";
+            icon: Icons.trash;
+            kind: ButtonKind.ghost;
+            clicked => {
+                InstancesApi.clear-logs(InstancesApi.selected.id);
+            }
+        }
+    }
+
+    Rectangle {
+        vertical-stretch: 1;
+        background: Theme.dark ? #0a0b0e : #fbfbfc;
+        border-radius: Theme.radius-lg;
+        border-width: 1px;
+        border-color: Theme.border;
+        clip: true;
+
+        if root.line-count == 0: VerticalLayout {
+            alignment: center;
+            spacing: 8px;
+            Image {
+                source: Icons.terminal;
+                colorize: Theme.text-faint;
+                width: 32px;
+                height: 32px;
+                x: (parent.width - self.width) / 2;
+            }
+            Text {
+                text: "Game output appears here when you play.";
+                color: Theme.text-muted;
+                horizontal-alignment: center;
+            }
+        }
+
+        view := ScrollView {
+            content-padding: 12px;
+
+            for line in InstancesApi.logs: Text {
+                text: line;
+                color: Theme.text-muted;
+                font-family: Theme.font-mono;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

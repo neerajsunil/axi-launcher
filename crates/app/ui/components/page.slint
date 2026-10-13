@@ -1,0 +1,91 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+
+// Fades and slides its content in when it appears, so switching pages feels like one
+// continuous surface instead of a hard cut.
+export component FadeIn inherits Rectangle {
+    property <bool> shown;
+    opacity: root.shown ? 1 : 0;
+    animate opacity { duration: Theme.normal; easing: ease-out; }
+    init => {
+        root.shown = true;
+    }
+    Rectangle {
+        y: root.shown ? 0 : 8px;
+        animate y { duration: Theme.slow; easing: ease-out; }
+        @children
+    }
+}
+
+// "Library › Name" trail above a page title; clicking the first part goes back.
+export component Breadcrumb inherits HorizontalLayout {
+    in property <string> parent-label;
+    in property <string> current;
+    callback back();
+
+    alignment: start;
+    spacing: 6px;
+    height: 20px;
+
+    Text {
+        text: root.parent-label;
+        color: touch.has-hover ? Theme.accent : Theme.text-muted;
+        font-size: Theme.font-small;
+        font-weight: 600;
+        vertical-alignment: center;
+        touch := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                root.back();
+            }
+        }
+    }
+    Image {
+        source: Icons.chevron-right;
+        colorize: Theme.text-faint;
+        width: 12px;
+        height: 12px;
+        y: (parent.height - self.height) / 2;
+    }
+    Text {
+        text: root.current;
+        color: Theme.text-faint;
+        font-size: Theme.font-small;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// Big page title with a muted subtitle; actions go on the right as children.
+export component PageHeader inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> subtitle;
+
+    spacing: 10px;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 2px;
+        horizontal-stretch: 1;
+        Text {
+            text: root.title;
+            color: Theme.text;
+            font-size: Theme.font-h1;
+            font-weight: 700;
+            overflow: elide;
+        }
+        if root.subtitle != "": Text {
+            text: root.subtitle;
+            color: Theme.text-muted;
+            font-size: Theme.font-body;
+            overflow: elide;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        HorizontalLayout {
+            spacing: 10px;
+            @children
+        }
+    }
+}

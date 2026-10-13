@@ -1,0 +1,203 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page } from "../nav.slint";
+import { ModsApi, ContentKinds } from "../api/mods.slint";
+import { Button, ButtonKind } from "button.slint";
+import { TextField } from "text-field.slint";
+import { ScrollView } from "scroll-view.slint";
+import { ResultRow } from "result-row.slint";
+import { SkeletonList, Delayed } from "skeleton.slint";
+import { Spinner } from "spinner.slint";
+import { EmptyState } from "empty-state.slint";
+import { LoadingBar } from "progress-bar.slint";
+
+// Search box plus the results of ModsApi's current search, shared by the browse pages.
+// The page runs the search (`search()`), this shows it.
+export component SearchResults inherits VerticalLayout {
+    in property <int> kind;
+    in property <bool> allow-reinstall;
+    in property <bool> install-enabled: true;
+    in-out property <string> query;
+    // Run the search again (the text or source changed).
+    callback search();
+    callback install(string /* project id */);
+    // Show a Modrinth project's page (CurseForge ones open in the browser).
+    callback open-details(string /* project id */);
+
+    // A new search starts at the top of its results.
+    public function run-search() {
+        list.scroll-to-top();
+        root.search();
+    }
+
+    property <bool> needs-key: ModsApi.source == 1 && !ModsApi.curseforge-ready;
+
+    spacing: 14px;
+
+    // Search shortly after typing stops.
+    debounce := Timer {
+        interval: 300ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.run-search();
+        }
+    }
+
+    TextField {
+        icon: Icons.search;
+        placeholder: "Search " + ContentKinds.plural[root.kind] + " on " + (ModsApi.source == 0 ? "Modrinth" : "CurseForge");
+        text <=> root.query;
+        edited => {
+            debounce.running = false;
+            debounce.running = true;
+        }
+        accepted => {
+            debounce.running = false;
+            root.run-search();
+        }
+    }
+
+    Rectangle {
+        vertical-stretch: 1;
+
+        if root.needs-key: EmptyState {
+            icon: Icons.alert;
+            tint: Theme.warning;
+            title: "CurseForge needs an API key";
+            text: "CurseForge only lets apps with a key search it. Create a free key at console.curseforge.com and paste it in Settings. Modrinth works without one.";
+            Button {
+                text: "Get a key";
+                icon: Icons.external-link;
+                clicked => {
+                    ModsApi.open-url("https://console.curseforge.com/");
+                }
+            }
+            Button {
+                text: "Open settings";
+                icon: Icons.gear;
+                kind: ButtonKind.primary;
+                clicked => {
+                    Nav.page = Page.settings;
+                }
+            }
+        }
+
+        // First page on its way: placeholder rows shaped like results.
+        if !root.needs-key && ModsApi.results.length == 0 && ModsApi.searching: Delayed {
+            delay: 80ms;
+            SkeletonList {
+                rows: 7;
+                row-height: 96px;
+                icon-size: 60px;
+                button: true;
+                description: true;
+                cards: true;
+                gap: 10px;
+            }
+        }
+
+        if !root.needs-key && ModsApi.results.length == 0 && !ModsApi.searching && ModsApi.search-error != "": EmptyState {
+            icon: Icons.alert;
+            tint: Theme.danger;
+            title: "Couldn't reach " + (ModsApi.source == 0 ? "Modrinth" : "CurseForge");
+            text: ModsApi.search-error;
+            Button {
+                text: "Try again";
+                icon: Icons.refresh;
+                kind: ButtonKind.primary;
+                clicked => {
+                    root.run-search();
+                }
+            }
+        }
+        if !root.needs-key && ModsApi.results.length == 0 && !ModsApi.searching && ModsApi.search-error == "": EmptyState {
+            icon: Icons.search;
+            title: "No " + ContentKinds.plural[root.kind] + " found";
+            text: root.query != "" ? "Nothing matches \"" + root.query + "\". Try fewer or different words." : "";
+        }
+
+        // Kept around (not conditional) so its scroll position survives new searches.
+        list := ScrollView {
+            visible: ModsApi.results.length > 0;
+            spacing: 10px;
+            // A new query is running over the old results: fade them back a little.
+            opacity: ModsApi.searching && !self.loading-more ? 0.55 : 1;
+            animate opacity { duration: Theme.normal; }
+            property <bool> loading-more;
+
+            // The next page loads on its own as the end comes into view.
+            reached-end => {
+                if ModsApi.has-more && !ModsApi.searching && ModsApi.search-error == "" && ModsApi.results.length > 0 {
+                    self.loading-more = true;
+                    ModsApi.load-more();
+                }
+            }
+            for item in ModsApi.results: ResultRow {
+                item: item;
+                allow-reinstall: root.allow-reinstall;
+                enabled: root.install-enabled;
+                install => {
+                    root.install(item.project-id);
+                }
+                open-page => {
+                    if ModsApi.source == 0 {
+                        ModsApi.details-open = true;
+                        root.open-details(item.project-id);
+                    } else {
+                        ModsApi.open-url(item.page-url);
+                    }
+                }
+            }
+            // Footer: loading the next page, a failed page with a retry, or the end.
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                height: 36px + Theme.page-padding;
+                padding-bottom: Theme.page-padding;
+                if ModsApi.searching: Spinner {
+                    size: 18px;
+                    y: (parent.height - self.height) / 2;
+                }
+                if ModsApi.searching: Text {
+                    text: "Loading more";
+                    color: Theme.text-muted;
+                    vertical-alignment: center;
+                }
+                if !ModsApi.searching && ModsApi.search-error != "": Text {
+                    text: ModsApi.search-error;
+                    color: Theme.danger;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if !ModsApi.searching && ModsApi.search-error != "": Button {
+                    text: "Retry";
+                    icon: Icons.refresh;
+                    clicked => {
+                        list.loading-more = true;
+                        ModsApi.load-more();
+                    }
+                }
+                if !ModsApi.searching && ModsApi.search-error == "" && !ModsApi.has-more: Text {
+                    text: "You've reached the end";
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        LoadingBar {
+            y: -8px;
+            active: ModsApi.searching && ModsApi.results.length > 0 && !list.loading-more;
+        }
+    }
+
+    // Clear the "loading more" flag once that page is in.
+    property <bool> searching: ModsApi.searching;
+    changed searching => {
+        if !self.searching {
+            list.loading-more = false;
+        }
+    }
+}

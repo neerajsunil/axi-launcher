@@ -1,0 +1,155 @@
+import { Theme } from "../../theme.slint";
+import { Icons } from "../../icons.slint";
+import { Nav, DialogKind } from "../../nav.slint";
+import { InstancesApi } from "../../api/instances.slint";
+import { Button, ButtonKind } from "../../components/button.slint";
+import { Card } from "../../components/card.slint";
+import { ScrollView } from "../../components/scroll-view.slint";
+
+component Stat inherits Card {
+    in property <string> label;
+    in property <string> value;
+    in property <image> icon;
+
+    height: 80px;
+    // Equal widths regardless of text length.
+    preferred-width: 1px;
+    horizontal-stretch: 1;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 4px;
+        HorizontalLayout {
+            spacing: 6px;
+            alignment: start;
+            Image {
+                source: root.icon;
+                colorize: Theme.accent;
+                width: 13px;
+                height: 13px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: root.label;
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+            }
+        }
+        Text {
+            text: root.value;
+            color: Theme.text;
+            font-size: Theme.font-large;
+            font-weight: 700;
+            overflow: elide;
+        }
+    }
+}
+
+export component InstanceOverview inherits ScrollView {
+    property <string> id: InstancesApi.selected.id;
+    spacing: 16px;
+    content-padding: 2px;
+
+    HorizontalLayout {
+        spacing: 12px;
+        Stat {
+            label: "Version";
+            icon: Icons.grass-block;
+            value: InstancesApi.selected.version;
+        }
+        Stat {
+            label: "Mod loader";
+            icon: Icons.layers;
+            value: InstancesApi.selected.loader + (InstancesApi.selected.loader-version != "" ? " " + InstancesApi.selected.loader-version : "");
+        }
+        Stat {
+            label: "Last played";
+            icon: Icons.clock;
+            value: InstancesApi.selected.last-played;
+        }
+        Stat {
+            label: "Total playtime";
+            icon: Icons.play;
+            value: InstancesApi.selected.playtime;
+        }
+        Stat {
+            label: "Created";
+            icon: Icons.sparkles;
+            value: InstancesApi.selected.created;
+        }
+    }
+
+    Card {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+            Text {
+                text: "Manage";
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: start;
+                Button {
+                    text: "Open folder";
+                    icon: Icons.folder;
+                    clicked => {
+                        InstancesApi.open-folder(root.id);
+                    }
+                }
+                Button {
+                    text: "Rename";
+                    icon: Icons.edit;
+                    clicked => {
+                        Nav.dialog = DialogKind.rename-instance;
+                    }
+                }
+                Button {
+                    text: "Version & loader";
+                    icon: Icons.tag;
+                    enabled: !InstancesApi.selected.running && !InstancesApi.selected.busy;
+                    clicked => {
+                        Nav.dialog = DialogKind.change-version;
+                    }
+                }
+                Button {
+                    text: "Copy";
+                    icon: Icons.copy;
+                    clicked => {
+                        Nav.dialog = DialogKind.copy-instance;
+                    }
+                }
+                Button {
+                    text: "Delete";
+                    icon: Icons.trash;
+                    kind: ButtonKind.danger;
+                    enabled: !InstancesApi.selected.running && !InstancesApi.selected.busy;
+                    clicked => {
+                        Nav.dialog = DialogKind.delete-instance;
+                    }
+                }
+            }
+        }
+    }
+
+    if InstancesApi.selected.notes != "": Card {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 8px;
+            Text {
+                text: "Notes";
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+            }
+            Text {
+                text: InstancesApi.selected.notes;
+                color: Theme.text-muted;
+                font-size: Theme.font-body;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

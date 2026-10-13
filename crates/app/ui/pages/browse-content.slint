@@ -1,0 +1,94 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { ModsApi, ContentKinds } from "../api/mods.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Segmented } from "../components/segmented.slint";
+import { Breadcrumb, PageHeader } from "../components/page.slint";
+import { SearchResults } from "../components/search-results.slint";
+import { ProjectDetails } from "../components/project-details.slint";
+
+// Search Modrinth or CurseForge for mods, resource packs or shaders and install them
+// into the selected instance. Which kind follows ModsApi.kind, shared with the Content tab.
+export component BrowseContentPage inherits Rectangle {
+    property <string> id: InstancesApi.selected.id;
+    property <string> target: ModsApi.kind == ContentKinds.resource-packs
+        ? "Minecraft " + InstancesApi.selected.version
+        : InstancesApi.selected.loader + " " + InstancesApi.selected.version;
+
+    function search() {
+        ModsApi.search(root.id, ModsApi.kind, ModsApi.source, results.query);
+    }
+    init => {
+        ModsApi.details-open = false;
+        root.search();
+    }
+
+    VerticalLayout {
+        // Hidden rather than removed while a project is open, so the results keep their scroll.
+        visible: !ModsApi.details-open;
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 16px;
+
+        Breadcrumb {
+            parent-label: InstancesApi.selected.name;
+            current: "Add " + ContentKinds.plural[ModsApi.kind];
+            back => {
+                Nav.instance-tab = 1;
+                Nav.page = Page.instance;
+            }
+        }
+
+        PageHeader {
+            title: "Add " + ContentKinds.plural[ModsApi.kind];
+            subtitle: "Showing " + ContentKinds.plural[ModsApi.kind] + " that work with " + root.target;
+            Segmented {
+                options: ContentKinds.labels;
+                current <=> ModsApi.kind;
+                selected(kind) => {
+                    // Keeps the "Installed" marks right for the new kind.
+                    ModsApi.refresh(root.id, kind);
+                    results.run-search();
+                }
+            }
+            Segmented {
+                options: ["Modrinth", "CurseForge"];
+                current <=> ModsApi.source;
+                selected => {
+                    results.run-search();
+                }
+            }
+        }
+
+        results := SearchResults {
+            vertical-stretch: 1;
+            kind: ModsApi.kind;
+            search => {
+                root.search();
+            }
+            open-details(project-id) => {
+                ModsApi.open-details(root.id, ModsApi.kind, project-id);
+            }
+            install(project-id) => {
+                ModsApi.install(root.id, ModsApi.kind, ModsApi.source, project-id);
+            }
+        }
+    }
+
+    if ModsApi.details-open: VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        ProjectDetails {
+            kind: ModsApi.kind;
+            allow-reinstall: false;
+            install(project-id) => {
+                ModsApi.install(root.id, ModsApi.kind, ModsApi.source, project-id);
+            }
+            retry => {
+                ModsApi.open-details(root.id, ModsApi.kind, ModsApi.details-hit.project-id);
+            }
+        }
+    }
+}

@@ -1,0 +1,33 @@
+import { Nav, DialogKind } from "../nav.slint";
+import { JavaApi } from "../api/java.slint";
+import { Button } from "button.slint";
+import { TextField } from "text-field.slint";
+
+// A Java executable path with a button that opens the Java picker. `target` names the
+// page, so a pick only lands in the field that opened the picker.
+export component JavaField inherits HorizontalLayout {
+    in-out property <string> path;
+    in property <string> target;
+
+    property <int> picks: JavaApi.picks;
+    changed picks => {
+        if JavaApi.target == root.target {
+            root.path = JavaApi.path;
+        }
+    }
+
+    spacing: 16px;
+
+    TextField {
+        text <=> root.path;
+        placeholder: "Automatic";
+    }
+    Button {
+        text: "Select Java";
+        clicked => {
+            JavaApi.target = root.target;
+            JavaApi.path = root.path;
+            Nav.dialog = DialogKind.java;
+        }
+    }
+}

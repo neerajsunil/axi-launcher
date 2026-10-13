@@ -1,0 +1,89 @@
+import { Theme } from "../theme.slint";
+
+// The panel of a popup menu. Put MenuItems (and MenuSeparators) inside, in a PopupWindow
+// sized with `MenuItem.row-height` per item.
+export component MenuPanel inherits Rectangle {
+    background: Theme.elevated;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: Theme.border-strong;
+    drop-shadow-blur: 24px;
+    drop-shadow-offset-y: 6px;
+    drop-shadow-color: Theme.shadow;
+
+    VerticalLayout {
+        padding: 5px;
+        spacing: 1px;
+        @children
+    }
+}
+
+export component MenuItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    // Shortcut or detail on the right.
+    in property <string> hint;
+    in property <bool> danger;
+    in property <bool> enabled: true;
+    // Marks the current choice with an accent dot.
+    in property <bool> checked;
+    callback clicked();
+
+    property <color> fg: !root.enabled ? Theme.text-faint : root.danger ? Theme.danger : Theme.text;
+
+    height: 34px;
+    border-radius: Theme.radius-sm;
+    background: !root.enabled ? transparent
+        : touch.has-hover ? (root.danger ? Theme.danger-soft : Theme.control-hover) : transparent;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+        if root.icon.width > 0: Image {
+            source: root.icon;
+            colorize: root.danger && root.enabled ? Theme.danger : Theme.text-muted;
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.text;
+            color: root.fg;
+            font-size: Theme.font-body;
+            font-weight: root.checked ? 700 : 500;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if root.hint != "": Text {
+            text: root.hint;
+            color: Theme.text-faint;
+            font-size: Theme.font-small;
+            vertical-alignment: center;
+        }
+        if root.checked: Rectangle {
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.accent;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+export component MenuSeparator inherits Rectangle {
+    height: 9px;
+    Rectangle {
+        height: 1px;
+        background: Theme.border;
+    }
+}

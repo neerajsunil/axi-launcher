@@ -1,0 +1,15 @@
+// UI-only navigation state.
+
+export enum Page { home, instances, instance, browse-content, browse-modpacks, accounts, settings }
+
+export enum DialogKind { none, new-instance, delete-instance, rename-instance, copy-instance, change-version, microsoft-login, add-offline-account, remove-account, mod-versions, java }
+
+export global Nav {
+    in-out property <Page> page: Page.home;
+    in-out property <DialogKind> dialog: DialogKind.none;
+    // 0 = Overview, 1 = Content, 2 = Settings, 3 = Logs
+    in-out property <int> instance-tab: 0;
+    // The account the remove-account dialog asks about.
+    in-out property <string> account-id;
+    in-out property <string> account-name;
+}

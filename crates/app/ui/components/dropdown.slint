@@ -1,0 +1,83 @@
+import { Theme } from "../theme.slint";
+import { Button, ButtonKind } from "button.slint";
+import { ScrollView } from "scroll-view.slint";
+
+// A button that opens a list of options below it.
+export component DropdownButton inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <[string]> options;
+    in property <string> empty-text: "Nothing found";
+    in property <length> menu-width: 600px;
+    in property <length> max-menu-height: 320px;
+    // Opens the menu under the button's left edge instead of its right edge.
+    in property <bool> align-left;
+    callback opened();
+    callback selected(int, string);
+
+    width: button.preferred-width;
+    height: Theme.control-height;
+
+    button := Button {
+        text: root.text;
+        icon: root.icon;
+        clicked => {
+            root.opened();
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: root.align-left ? 0 : root.width - root.menu-width;
+        y: root.height + 4px;
+        width: root.menu-width;
+        height: min(max(1, root.options.length) * 34px + 12px, root.max-menu-height);
+
+        Rectangle {
+            background: Theme.surface;
+            border-radius: Theme.radius;
+            border-width: 1px;
+            border-color: Theme.border-strong;
+            drop-shadow-blur: 18px;
+            drop-shadow-color: #00000050;
+            clip: true;
+
+            if root.options.length == 0: Text {
+                text: root.empty-text;
+                color: Theme.text-muted;
+                font-size: Theme.font-body;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+
+            ScrollView {
+                content-padding: 6px;
+                spacing: 2px;
+
+                for option[i] in root.options: Rectangle {
+                    height: 32px;
+                    border-radius: Theme.radius-sm;
+                    background: item-touch.has-hover ? Theme.control-hover : transparent;
+
+                    Text {
+                        x: 10px;
+                        width: parent.width - 20px;
+                        text: option;
+                        color: Theme.text;
+                        font-size: Theme.font-body;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+
+                    item-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.selected(i, option);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

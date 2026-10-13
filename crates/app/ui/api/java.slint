@@ -1,0 +1,38 @@
+import { JavaInstallItem, JavaReleaseItem } from "types.slint";
+
+// Implemented in src/controllers/java.rs.
+export global JavaApi {
+    // Java found on this computer, newest first.
+    in property <[JavaInstallItem]> installs;
+    in property <bool> detecting;
+
+    // Downloadable versions from `provider`, an index into `providers`.
+    out property <[string]> providers: ["Mojang", "Eclipse Temurin", "Azul Zulu"];
+    in-out property <int> provider;
+    in property <[JavaReleaseItem]> releases;
+    in property <bool> releases-loading;
+    in property <string> releases-error;
+
+    // Status of a running download; empty when idle.
+    in property <string> busy-text;
+    in property <float> busy-progress;
+
+    // The picker edits the Java path of whichever page opened it: that page sets `target`
+    // and `path`, and copies `path` back whenever `picks` changes (see JavaField).
+    in-out property <string> target;
+    in-out property <string> path;
+    in-out property <int> picks;
+    public function pick(java: string) {
+        path = java;
+        picks += 1;
+    }
+
+    callback detect();
+    callback load-releases(int /* provider */);
+    // Downloads the latest build, replacing an older one.
+    callback install(int /* provider */, int /* index into releases */);
+    // Deletes a Java this launcher downloaded.
+    callback remove(string /* path */);
+    // Picks an executable with the file dialog.
+    callback browse();
+}

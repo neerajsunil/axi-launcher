@@ -1,0 +1,192 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, DialogKind } from "../nav.slint";
+import { AccountsApi } from "../api/accounts.slint";
+import { AccountItem } from "../api/types.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Card, Badge } from "../components/card.slint";
+import { ScrollView } from "../components/scroll-view.slint";
+import { Avatar } from "../components/avatar.slint";
+import { PageHeader } from "../components/page.slint";
+
+component AccountRow inherits Card {
+    in property <AccountItem> item;
+
+    height: 72px;
+    border-color: root.item.active ? Theme.play : touch.has-hover ? Theme.border-strong : Theme.border;
+    background: touch.has-hover && !root.item.active ? Theme.surface-hover : Theme.surface;
+
+    touch := TouchArea {
+        mouse-cursor: root.item.active ? default : pointer;
+        clicked => {
+            AccountsApi.select(root.item.id);
+        }
+    }
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 14px;
+
+        Avatar {
+            initial: root.item.initial;
+            head: root.item.head;
+            has-head: root.item.has-head;
+            size: 40px;
+            y: (parent.height - self.height) / 2;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.name;
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                if root.item.microsoft: Image {
+                    source: Icons.microsoft;
+                    width: 12px;
+                    height: 12px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: root.item.busy ? "Signing in..." : root.item.microsoft ? "Microsoft account" : "Offline account";
+                    color: Theme.text-muted;
+                    font-size: Theme.font-small;
+                }
+            }
+        }
+        if root.item.active: VerticalLayout {
+            alignment: center;
+            Badge {
+                text: "● Active";
+                text-color: Theme.play;
+                fill: Theme.play-soft;
+            }
+        }
+        if !root.item.active: Button {
+            text: "Use";
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                AccountsApi.select(root.item.id);
+            }
+        }
+        if root.item.microsoft: Button {
+            icon: Icons.refresh;
+            tooltip: "Refresh sign-in";
+            kind: ButtonKind.ghost;
+            enabled: !root.item.busy;
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                AccountsApi.refresh(root.item.id);
+            }
+        }
+        Button {
+            icon: Icons.trash;
+            tooltip: "Remove account";
+            kind: ButtonKind.ghost;
+            y: (parent.height - self.height) / 2;
+            clicked => {
+                Nav.account-id = root.item.id;
+                Nav.account-name = root.item.name;
+                Nav.dialog = DialogKind.remove-account;
+            }
+        }
+    }
+}
+
+// Saved accounts: add, switch and remove them.
+export component AccountsPage inherits Rectangle {
+    VerticalLayout {
+        padding: Theme.page-padding;
+        padding-bottom: 0;
+        spacing: 22px;
+
+        PageHeader {
+            title: "Accounts";
+            subtitle: "Games start with the active account. Click one to switch.";
+            Button {
+                text: "Add offline";
+                icon: Icons.plus;
+                clicked => {
+                    Nav.dialog = DialogKind.add-offline-account;
+                }
+            }
+            Button {
+                text: "Sign in with Microsoft";
+                icon: Icons.log-in;
+                kind: ButtonKind.primary;
+                clicked => {
+                    Nav.dialog = DialogKind.microsoft-login;
+                }
+            }
+        }
+
+        if AccountsApi.items.length > 0: ScrollView {
+            vertical-stretch: 1;
+            spacing: 10px;
+            content-padding: 2px;
+
+            for item in AccountsApi.items: AccountRow {
+                item: item;
+            }
+
+            Text {
+                text: "Offline accounts can play singleplayer and LAN, but online servers only accept Microsoft accounts.";
+                color: Theme.text-faint;
+                font-size: Theme.font-small;
+                wrap: word-wrap;
+            }
+            Rectangle { height: Theme.page-padding; }
+        }
+
+        if AccountsApi.items.length == 0: VerticalLayout {
+            vertical-stretch: 1;
+            alignment: center;
+            spacing: 14px;
+            Image {
+                source: Icons.user;
+                colorize: Theme.text-faint;
+                width: 48px;
+                height: 48px;
+                x: (parent.width - self.width) / 2;
+            }
+            Text {
+                text: "No accounts yet";
+                color: Theme.text;
+                font-size: Theme.font-title;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Sign in with the Microsoft account that owns Minecraft, or add an offline name.";
+                color: Theme.text-muted;
+                horizontal-alignment: center;
+            }
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                Button {
+                    text: "Add offline";
+                    icon: Icons.plus;
+                    clicked => {
+                        Nav.dialog = DialogKind.add-offline-account;
+                    }
+                }
+                Button {
+                    text: "Sign in with Microsoft";
+                    icon: Icons.log-in;
+                    kind: ButtonKind.primary;
+                    clicked => {
+                        Nav.dialog = DialogKind.microsoft-login;
+                    }
+                }
+            }
+        }
+    }
+}

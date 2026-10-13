@@ -1,0 +1,12 @@
+import { VersionItem } from "types.slint";
+
+// Implemented in src/controllers/versions.rs.
+export global VersionsApi {
+    in property <[VersionItem]> items;
+    in property <bool> loading: true;
+    in property <string> error;
+
+    // Refilters `items`.
+    callback query(string /* search */, bool /* include snapshots */);
+    callback reload();
+}

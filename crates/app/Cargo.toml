@@ -1,0 +1,28 @@
+[package]
+name = "axi-app"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "axi-launcher"
+path = "src/main.rs"
+
+[features]
+# `cargo dev`: hot-reloads ui/*.slint while the app is running.
+dev = ["slint/live-preview"]
+
+[dependencies]
+axi-core.workspace = true
+anyhow.workspace = true
+image.workspace = true
+open.workspace = true
+rayon.workspace = true
+rfd.workspace = true
+slint.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
+
+# Embeds the Axi icon into the Windows .exe.
+[target.'cfg(windows)'.build-dependencies]
+winresource.workspace = true

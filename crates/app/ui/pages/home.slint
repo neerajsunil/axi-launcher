@@ -1,0 +1,555 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { AccountsApi } from "../api/accounts.slint";
+import { ModpacksApi } from "../api/modpacks.slint";
+import { InstanceItem } from "../api/types.slint";
+import { Button, ButtonKind, ButtonSize } from "../components/button.slint";
+import { Badge } from "../components/card.slint";
+import { ScrollView } from "../components/scroll-view.slint";
+import { ProgressBar } from "../components/progress-bar.slint";
+import { InstanceAvatar, PlayCircle, InstanceMenu } from "../components/instance-card.slint";
+
+component SectionTitle inherits HorizontalLayout {
+    in property <string> text;
+    in property <string> link;
+    callback link-clicked();
+    height: 28px;
+    Text {
+        text: root.text;
+        color: Theme.text;
+        font-size: Theme.font-large;
+        font-weight: 700;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+    }
+    if root.link != "": HorizontalLayout {
+        spacing: 4px;
+        Text {
+            text: root.link;
+            color: link-touch.has-hover ? Theme.accent-hover : Theme.accent;
+            font-size: Theme.font-small;
+            font-weight: 600;
+            vertical-alignment: center;
+            link-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.link-clicked();
+                }
+            }
+        }
+        Image {
+            source: Icons.chevron-right;
+            colorize: Theme.accent;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+}
+
+// The instance played last, big, with Play one click away.
+component Hero inherits Rectangle {
+    in property <InstanceItem> item;
+
+    function open() {
+        InstancesApi.select(root.item.id);
+        Nav.instance-tab = 0;
+        Nav.page = Page.instance;
+    }
+
+    height: 196px;
+    border-radius: Theme.radius-xl;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.item.running ? Theme.play : Theme.border;
+    clip: true;
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.open();
+        }
+        pointer-event(e) => {
+            if e.button == PointerEventButton.right && e.kind == PointerEventKind.up {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding: 28px;
+        spacing: 26px;
+
+        InstanceAvatar {
+            item: root.item;
+            size: 140px;
+            y: (parent.height - self.height) / 2;
+            drop-shadow-blur: 24px;
+            drop-shadow-offset-y: 8px;
+            drop-shadow-color: Theme.shadow;
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.running ? "PLAYING NOW" : root.item.last-played == "Never" ? "READY TO PLAY" : "JUMP BACK IN";
+                color: root.item.running ? Theme.play : Theme.accent;
+                font-size: Theme.font-tiny;
+                font-weight: 700;
+                letter-spacing: 1.2px;
+            }
+            Text {
+                text: root.item.name;
+                color: Theme.text;
+                font-size: Theme.font-h1;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.version + " · " + root.item.loader
+                    + (root.item.pack != "" ? " · " + root.item.pack : "");
+                color: Theme.text-muted;
+                font-size: Theme.font-body;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: 16px;
+                alignment: start;
+                padding-top: 4px;
+                HorizontalLayout {
+                    spacing: 6px;
+                    Image {
+                        source: Icons.clock;
+                        colorize: Theme.text-faint;
+                        width: 14px;
+                        height: 14px;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text {
+                        text: root.item.last-played == "Never" ? "Not played yet" : "Played " + root.item.last-played.to-lowercase();
+                        color: Theme.text-faint;
+                        font-size: Theme.font-small;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.item.playtime != "0m": Text {
+                    text: root.item.playtime + " total";
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 10px;
+            width: 200px;
+            if !root.item.running: Button {
+                text: root.item.busy ? "Preparing" : "Play";
+                icon: Icons.play;
+                kind: ButtonKind.play;
+                size: ButtonSize.large;
+                loading: root.item.busy;
+                clicked => {
+                    InstancesApi.play(root.item.id);
+                }
+            }
+            if root.item.running: Button {
+                text: "Stop";
+                icon: Icons.stop;
+                kind: ButtonKind.danger;
+                size: ButtonSize.large;
+                clicked => {
+                    InstancesApi.stop(root.item.id);
+                }
+            }
+            if root.item.busy: VerticalLayout {
+                spacing: 6px;
+                ProgressBar {
+                    progress: root.item.progress;
+                }
+                Text {
+                    text: root.item.status;
+                    color: Theme.text-muted;
+                    font-size: Theme.font-small;
+                    horizontal-alignment: center;
+                    overflow: elide;
+                }
+            }
+            if !root.item.busy: Button {
+                text: "Manage";
+                icon: Icons.settings;
+                kind: ButtonKind.ghost;
+                clicked => {
+                    root.open();
+                }
+            }
+        }
+    }
+
+    menu := InstanceMenu {
+        x: 0;
+        y: 0;
+        item: root.item;
+    }
+}
+
+// A smaller recent instance.
+component RecentTile inherits Rectangle {
+    in property <InstanceItem> item;
+
+    border-radius: Theme.radius-lg;
+    background: touch.has-hover || play.hovered ? Theme.surface-hover : Theme.surface;
+    border-width: 1px;
+    border-color: root.item.running ? Theme.play : touch.has-hover || play.hovered ? Theme.border-strong : Theme.border;
+    animate background, border-color { duration: Theme.fast; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            InstancesApi.select(root.item.id);
+            Nav.instance-tab = 0;
+            Nav.page = Page.instance;
+        }
+        pointer-event(e) => {
+            if e.button == PointerEventButton.right && e.kind == PointerEventKind.up {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+        InstanceAvatar {
+            item: root.item;
+            size: 44px;
+            y: (parent.height - self.height) / 2;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.name;
+                color: Theme.text;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.busy ? root.item.status : root.item.version + " · " + root.item.loader;
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+        }
+        play := PlayCircle {
+            item: root.item;
+            size: 34px;
+            emphasized: touch.has-hover;
+            y: (parent.height - self.height) / 2;
+            play => {
+                InstancesApi.play(root.item.id);
+            }
+            stop => {
+                InstancesApi.stop(root.item.id);
+            }
+        }
+    }
+
+    menu := InstanceMenu {
+        x: 0;
+        y: 0;
+        item: root.item;
+    }
+}
+
+// A big shortcut with an icon, title and one-line explanation.
+component ActionTile inherits Rectangle {
+    in property <image> icon;
+    in property <string> title;
+    in property <string> text;
+    in property <color> tint: Theme.accent;
+    callback clicked();
+
+    height: 84px;
+    // Equal widths side by side.
+    preferred-width: 1px;
+    horizontal-stretch: 1;
+    border-radius: Theme.radius-lg;
+    background: touch.has-hover ? Theme.surface-hover : Theme.surface;
+    border-width: 1px;
+    border-color: touch.has-hover ? root.tint.with-alpha(0.6) : Theme.border;
+    animate background, border-color { duration: Theme.fast; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 14px;
+        Rectangle {
+            width: 44px;
+            height: 44px;
+            border-radius: Theme.radius;
+            background: root.tint.with-alpha(0.14);
+            y: (parent.height - self.height) / 2;
+            Image {
+                source: root.icon;
+                colorize: root.tint;
+                width: 22px;
+                height: 22px;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.title;
+                color: Theme.text;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: root.text;
+                color: Theme.text-muted;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+// One step of the first-run checklist.
+component Step inherits HorizontalLayout {
+    in property <int> number;
+    in property <string> title;
+    in property <string> text;
+    in property <bool> done;
+    in property <bool> current;
+
+    spacing: 14px;
+    Rectangle {
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background: root.done ? Theme.play : root.current ? Theme.accent : Theme.control;
+        y: (parent.height - self.height) / 2;
+        if root.done: Image {
+            source: Icons.check;
+            colorize: Theme.on-play;
+            width: 16px;
+            height: 16px;
+        }
+        if !root.done: Text {
+            text: root.number;
+            color: root.current ? Theme.on-accent : Theme.text-muted;
+            font-weight: 700;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 2px;
+        horizontal-stretch: 1;
+        Text {
+            text: root.title;
+            color: root.done ? Theme.text-muted : Theme.text;
+            font-weight: 700;
+        }
+        Text {
+            text: root.text;
+            color: Theme.text-muted;
+            font-size: Theme.font-small;
+            wrap: word-wrap;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        HorizontalLayout {
+            spacing: 8px;
+            @children
+        }
+    }
+}
+
+// Start page: the last-played instance front and center, then other recent ones and
+// shortcuts. New users get a short checklist instead.
+export component HomePage inherits Rectangle {
+    property <bool> has-instances: InstancesApi.recent.length > 0;
+    property <length> gap: 14px;
+
+    ScrollView {
+        content-padding: Theme.page-padding;
+        spacing: 28px;
+
+        // Greeting
+        VerticalLayout {
+            spacing: 4px;
+            Text {
+                text: AccountsApi.has-active ? "Welcome back, " + AccountsApi.active.name : "Welcome to Axi";
+                color: Theme.text;
+                font-size: Theme.font-display;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: root.has-instances ? "Pick up where you left off." : "Three quick steps and you're in the game.";
+                color: Theme.text-muted;
+                font-size: Theme.font-large;
+            }
+        }
+
+        if root.has-instances: Hero {
+            item: InstancesApi.recent[0];
+        }
+
+        // Other recent instances, as many as fit on one row.
+        if InstancesApi.recent.length > 1: VerticalLayout {
+            spacing: 12px;
+            SectionTitle {
+                text: "Recent";
+                link: "View library";
+                link-clicked => {
+                    Nav.page = Page.instances;
+                }
+            }
+            row := Rectangle {
+                property <int> columns: max(2, min(4, floor((self.width + root.gap) / (240px + root.gap))));
+                property <length> tile-width: (self.width - (self.columns - 1) * root.gap) / self.columns;
+                height: 70px;
+                for item[i] in InstancesApi.recent: RecentTile {
+                    visible: i > 0 && i <= row.columns;
+                    x: (i - 1) * (row.tile-width + root.gap);
+                    width: row.tile-width;
+                    height: parent.height;
+                    item: item;
+                }
+            }
+        }
+
+        // First run checklist
+        if !root.has-instances: Rectangle {
+            border-radius: Theme.radius-xl;
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            clip: true;
+            Rectangle {
+                background: @radial-gradient(circle, Theme.accent.with-alpha(0.18) 0%, Theme.accent.with-alpha(0) 60%);
+                width: 560px;
+                height: 560px;
+                x: parent.width - 330px;
+                y: -220px;
+            }
+            HorizontalLayout {
+                padding: 28px;
+                spacing: 28px;
+                VerticalLayout {
+                    spacing: 22px;
+                    horizontal-stretch: 1;
+                    Step {
+                        number: 1;
+                        title: "Add your account";
+                        text: "Sign in with the Microsoft account that owns Minecraft, or play offline.";
+                        done: AccountsApi.has-active;
+                        current: !AccountsApi.has-active;
+                        if !AccountsApi.has-active: Button {
+                            text: "Sign in";
+                            icon: Icons.log-in;
+                            kind: ButtonKind.primary;
+                            clicked => {
+                                Nav.dialog = DialogKind.microsoft-login;
+                            }
+                        }
+                        if !AccountsApi.has-active: Button {
+                            text: "Offline";
+                            kind: ButtonKind.ghost;
+                            clicked => {
+                                Nav.dialog = DialogKind.add-offline-account;
+                            }
+                        }
+                    }
+                    Step {
+                        number: 2;
+                        title: "Make an instance";
+                        text: "Pick any version from 1.13 up, with or without mods. Or grab a ready-made modpack.";
+                        current: AccountsApi.has-active;
+                        Button {
+                            text: "Browse modpacks";
+                            icon: Icons.compass;
+                            clicked => {
+                                Nav.page = Page.browse-modpacks;
+                            }
+                        }
+                        Button {
+                            text: "New instance";
+                            icon: Icons.plus;
+                            kind: AccountsApi.has-active ? ButtonKind.primary : ButtonKind.secondary;
+                            clicked => {
+                                Nav.dialog = DialogKind.new-instance;
+                            }
+                        }
+                    }
+                    Step {
+                        number: 3;
+                        title: "Press Play";
+                        text: "Axi downloads the game, Java and everything else it needs for you.";
+                    }
+                }
+                Image {
+                    source: Icons.axi;
+                    width: 150px;
+                    height: 150px;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+        }
+
+        // Shortcuts
+        VerticalLayout {
+            spacing: 12px;
+            SectionTitle {
+                text: "Quick start";
+            }
+            HorizontalLayout {
+                spacing: root.gap;
+                ActionTile {
+                    icon: Icons.plus;
+                    title: "New instance";
+                    text: "Any version, vanilla or modded";
+                    clicked => {
+                        Nav.dialog = DialogKind.new-instance;
+                    }
+                }
+                ActionTile {
+                    icon: Icons.compass;
+                    title: "Discover modpacks";
+                    text: "Modrinth and CurseForge";
+                    tint: Theme.info;
+                    clicked => {
+                        Nav.page = Page.browse-modpacks;
+                    }
+                }
+                ActionTile {
+                    icon: Icons.upload;
+                    title: "Import a modpack";
+                    text: ".mrpack or CurseForge .zip";
+                    tint: Theme.warning;
+                    clicked => {
+                        ModpacksApi.import-file();
+                    }
+                }
+            }
+        }
+    }
+}

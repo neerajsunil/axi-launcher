@@ -1,0 +1,139 @@
+import { Theme } from "../theme.slint";
+
+// Grey placeholder shapes that gently pulse while content loads. Showing the shape of
+// what is coming makes waits feel shorter than a blank page or a "Loading..." line, and
+// the layout doesn't jump when the real content arrives.
+
+// One pulsing block. `phase` (0..1) offsets the pulse so rows ripple instead of blinking together.
+export component Skeleton inherits Rectangle {
+    in property <float> phase;
+    border-radius: Theme.radius-sm;
+    background: Theme.skeleton;
+    opacity: 0.55 + 0.45 * (1 + sin((animation-tick() / 1ms * 0.3 - root.phase * 360) * 1deg)) / 2;
+}
+
+// Fades in after a short delay, so quick loads never flash placeholders.
+export component Delayed inherits Rectangle {
+    in property <duration> delay: 150ms;
+    property <bool> shown;
+    opacity: root.shown ? 1 : 0;
+    animate opacity { duration: Theme.normal; }
+    Timer {
+        interval: root.delay;
+        running: !root.shown;
+        triggered => {
+            root.shown = true;
+        }
+    }
+    @children
+}
+
+// A list row: square icon, title and detail lines, optional button on the right.
+export component SkeletonRow inherits Rectangle {
+    in property <float> phase;
+    in property <length> icon-size: 40px;
+    in property <bool> button;
+    in property <bool> description;
+    // Varies the line widths so a list of these doesn't look like a grid.
+    in property <float> spread: 0.5;
+
+    height: 60px;
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 14px;
+        if root.icon-size > 0: Skeleton {
+            phase: root.phase;
+            width: root.icon-size;
+            height: root.icon-size;
+            border-radius: Theme.radius;
+            y: (parent.height - self.height) / 2;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 8px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                alignment: start;
+                Skeleton {
+                    phase: root.phase;
+                    width: 120px + 120px * root.spread;
+                    height: 12px;
+                }
+            }
+            HorizontalLayout {
+                alignment: start;
+                Skeleton {
+                    phase: root.phase + 0.1;
+                    width: 200px + 160px * (1 - root.spread);
+                    height: 10px;
+                }
+            }
+            if root.description: HorizontalLayout {
+                alignment: start;
+                Skeleton {
+                    phase: root.phase + 0.2;
+                    width: 140px + 100px * root.spread;
+                    height: 10px;
+                }
+            }
+        }
+        if root.button: Skeleton {
+            phase: root.phase;
+            width: 104px;
+            height: Theme.control-height;
+            border-radius: Theme.radius;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+}
+
+// A few rows of SkeletonRow, used wherever a list is on its way.
+export component SkeletonList inherits VerticalLayout {
+    in property <int> rows: 6;
+    in property <length> row-height: 60px;
+    in property <length> icon-size: 40px;
+    in property <bool> button;
+    in property <bool> description;
+    in property <length> gap: 4px;
+    // Wraps each row in a card, like search results.
+    in property <bool> cards;
+
+    spacing: root.gap;
+    alignment: start;
+
+    for i in root.rows: Rectangle {
+        height: root.row-height;
+        border-radius: root.cards ? Theme.radius-lg : 0;
+        background: root.cards ? Theme.surface : transparent;
+        border-width: root.cards ? 1px : 0;
+        border-color: Theme.border;
+        // Later rows fade out, hinting "more below" without drawing a full page of grey.
+        opacity: 1 - i / max(1, root.rows) * 0.6;
+        SkeletonRow {
+            height: parent.height;
+            phase: i * 0.12;
+            spread: mod(i * 0.37, 1);
+            icon-size: root.icon-size;
+            button: root.button;
+            description: root.description;
+        }
+    }
+}
+
+// Paragraph-shaped lines, for descriptions.
+export component SkeletonText inherits VerticalLayout {
+    in property <int> lines: 5;
+    spacing: 10px;
+    alignment: start;
+    for i in root.lines: HorizontalLayout {
+        alignment: start;
+        Skeleton {
+            phase: i * 0.08;
+            height: 12px;
+            // The last line of a paragraph is short.
+            width: parent.width * (i == root.lines - 1 ? 0.55 : 0.82 + mod(i * 0.29, 0.18));
+        }
+    }
+}

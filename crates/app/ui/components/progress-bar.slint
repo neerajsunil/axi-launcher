@@ -1,0 +1,39 @@
+import { Theme } from "../theme.slint";
+
+export component ProgressBar inherits Rectangle {
+    in property <float> progress;
+    in property <color> tint: Theme.accent;
+
+    height: 6px;
+    border-radius: self.height / 2;
+    background: Theme.control;
+    clip: true;
+
+    Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.progress, 0, 1);
+        border-radius: parent.border-radius;
+        background: @linear-gradient(90deg, root.tint.with-alpha(0.75) 0%, root.tint 100%);
+        animate width { duration: Theme.normal; easing: ease-out; }
+    }
+}
+
+// A thin bar with a segment sweeping across, for refreshes where the old content stays
+// visible underneath. Transparent track, so it can sit on top of anything.
+export component LoadingBar inherits Rectangle {
+    in property <bool> active;
+
+    height: 3px;
+    border-radius: 2px;
+    clip: true;
+    opacity: root.active ? 1 : 0;
+    animate opacity { duration: Theme.normal; }
+
+    if root.active: Rectangle {
+        property <float> t: mod(animation-tick() / 1ms, 1200) / 1200;
+        width: parent.width * 0.35;
+        x: -self.width + (parent.width + self.width) * self.t;
+        border-radius: 2px;
+        background: @linear-gradient(90deg, Theme.accent.with-alpha(0) 0%, Theme.accent 50%, Theme.accent.with-alpha(0) 100%);
+    }
+}

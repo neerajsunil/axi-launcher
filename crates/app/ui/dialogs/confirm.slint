@@ -1,0 +1,35 @@
+import { Theme } from "../theme.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+
+// Yes/no question, e.g. before deleting something.
+export component ConfirmDialog inherits Dialog {
+    in property <string> message;
+    in property <string> confirm-text: "Confirm";
+    in property <bool> danger;
+    callback confirmed();
+
+    Text {
+        text: root.message;
+        color: Theme.text-muted;
+        font-size: Theme.font-body;
+        wrap: word-wrap;
+    }
+
+    DialogFooter {
+        Button {
+            text: "Cancel";
+            clicked => {
+                root.close();
+            }
+        }
+        Button {
+            text: root.confirm-text;
+            kind: root.danger ? ButtonKind.danger : ButtonKind.primary;
+            clicked => {
+                root.confirmed();
+                root.close();
+            }
+        }
+    }
+}

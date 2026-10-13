@@ -1,0 +1,92 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Button, ButtonKind } from "button.slint";
+
+// Modal: dims the window and shows a centered panel. Content goes in the body;
+// put action buttons in a `DialogFooter` as the last child.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <length> panel-width: 460px;
+    callback close();
+
+    property <bool> shown;
+    init => {
+        root.shown = true;
+    }
+
+    background: root.shown ? Theme.overlay : Theme.overlay.with-alpha(0);
+    animate background { duration: Theme.normal; }
+
+    // Swallow clicks and scrolling so nothing behind the dialog reacts.
+    TouchArea {
+        scroll-event(e) => {
+            accept
+        }
+        clicked => {
+            root.close();
+        }
+    }
+
+    FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.close();
+                return accept;
+            }
+            reject
+        }
+
+        panel := Rectangle {
+            // Snapped to whole physical pixels: a panel centered on a half pixel renders
+            // all of its text blurry.
+            width: round(min(root.panel-width, root.width - 48px) / 1phx) * 1phx;
+            height: round(min(layout.preferred-height, root.height - 48px) / 1phx) * 1phx;
+            x: round((root.width - self.width) / 2 / 1phx) * 1phx;
+            y: round((root.height - self.height) / 2 / 1phx) * 1phx + (root.shown ? 0 : 14px);
+            opacity: root.shown ? 1 : 0;
+            animate y, opacity { duration: Theme.normal; easing: ease-out; }
+            background: Theme.elevated;
+            border-radius: Theme.radius-xl;
+            border-width: 1px;
+            border-color: Theme.border-strong;
+            drop-shadow-blur: 40px;
+            drop-shadow-color: Theme.shadow;
+            drop-shadow-offset-y: 8px;
+            clip: true;
+
+            TouchArea { } // keep clicks inside the panel from closing it
+
+            layout := VerticalLayout {
+                padding: 24px;
+                spacing: 18px;
+
+                HorizontalLayout {
+                    Text {
+                        text: root.title;
+                        color: Theme.text;
+                        font-size: Theme.font-title;
+                        font-weight: 700;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        icon: Icons.x;
+                        tooltip: "Close";
+                        kind: ButtonKind.ghost;
+                        clicked => {
+                            root.close();
+                        }
+                    }
+                }
+
+                @children
+            }
+        }
+    }
+}
+
+export component DialogFooter inherits HorizontalLayout {
+    alignment: end;
+    spacing: 10px;
+    padding-top: 4px;
+}

@@ -1,0 +1,112 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AccountsApi } from "../api/accounts.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+
+// Microsoft device code sign-in: shows the code to enter at microsoft.com/link.
+// Starts signing in when shown; closing it cancels.
+export component MicrosoftLoginDialog inherits Dialog {
+    title: "Sign in with Microsoft";
+    property <bool> copied;
+
+    init => {
+        AccountsApi.sign-in();
+    }
+
+    if AccountsApi.login-error != "": HorizontalLayout {
+        spacing: 10px;
+        Image {
+            source: Icons.alert;
+            colorize: Theme.danger;
+            width: 18px;
+            height: 18px;
+        }
+        Text {
+            text: AccountsApi.login-error;
+            color: Theme.text;
+            font-size: Theme.font-body;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+    }
+
+    if AccountsApi.login-error == "" && AccountsApi.login-code != "": VerticalLayout {
+        spacing: 14px;
+        Text {
+            text: "Open the Microsoft sign-in page and enter this code. Use the account that owns Minecraft.";
+            color: Theme.text-muted;
+            font-size: Theme.font-body;
+            wrap: word-wrap;
+        }
+        Rectangle {
+            height: 68px;
+            border-radius: Theme.radius;
+            background: Theme.control;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            code := TextInput {
+                text: AccountsApi.login-code;
+                read-only: true;
+                color: Theme.text;
+                font-size: 30px;
+                font-weight: 700;
+                font-family: Theme.font-mono;
+                letter-spacing: 4px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                selection-background-color: Theme.accent-soft;
+                selection-foreground-color: Theme.text;
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            Button {
+                text: root.copied ? "Copied" : "Copy code";
+                icon: root.copied ? Icons.check : Icons.copy;
+                horizontal-stretch: 1;
+                clicked => {
+                    code.select-all();
+                    code.copy();
+                    code.clear-selection();
+                    root.copied = true;
+                }
+            }
+            Button {
+                text: "Open sign-in page";
+                icon: Icons.external-link;
+                kind: ButtonKind.primary;
+                horizontal-stretch: 1;
+                clicked => {
+                    AccountsApi.open-sign-in-page();
+                }
+            }
+        }
+    }
+
+    if AccountsApi.login-error == "": Text {
+        text: AccountsApi.login-status;
+        color: Theme.text-faint;
+        font-size: Theme.font-small;
+        horizontal-alignment: center;
+    }
+
+    DialogFooter {
+        Button {
+            text: "Cancel";
+            clicked => {
+                root.close();
+            }
+        }
+        if AccountsApi.login-error != "": Button {
+            text: "Try again";
+            icon: Icons.refresh;
+            kind: ButtonKind.primary;
+            clicked => {
+                root.copied = false;
+                AccountsApi.sign-in();
+            }
+        }
+    }
+}

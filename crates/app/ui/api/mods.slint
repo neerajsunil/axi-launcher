@@ -1,0 +1,94 @@
+import { ModItem, ModHitItem, ModVersionItem, ProjectDetailsData, DescriptionBlock, LinkItem } from "types.slint";
+
+// Content kinds, as passed to the callbacks below.
+export global ContentKinds {
+    out property <int> mods: 0;
+    out property <int> resource-packs: 1;
+    out property <int> shaders: 2;
+    out property <int> modpacks: 3;
+    // Names for the kind switcher, in index order.
+    out property <[string]> labels: ["Mods", "Resource packs", "Shaders"];
+    out property <[string]> singular: ["mod", "resource pack", "shader", "modpack"];
+    out property <[string]> plural: ["mods", "resource packs", "shaders", "modpacks"];
+}
+
+// Implemented in src/controllers/mods.rs and browse.rs.
+export global ModsApi {
+    // The kind the Content tab and browse page show (see ContentKinds).
+    in-out property <int> kind: 0;
+
+    // Installed content of the selected instance (filtered by `filter`).
+    in property <[ModItem]> installed;
+    in property <int> installed-count;
+    in property <int> disabled-count;
+    in property <int> update-count;
+    in property <bool> loading;
+    in property <bool> checking-updates;
+    // Iris or Oculus is installed; refreshed with the shaders list.
+    in property <bool> shader-loader;
+    // Iris is queued or downloading.
+    in property <bool> shader-loader-installing;
+    // Which instance and kind `installed`, `loading` and `shader-loader` describe; the
+    // page compares them with what it shows so it never acts on another view's state.
+    in property <string> shown-instance;
+    in property <int> shown-kind: -1;
+
+    callback refresh(string /* instance id */, int /* kind */);
+    callback filter(string);
+    callback set-enabled(string /* instance id */, int /* kind */, string /* file */, bool);
+    callback remove(string /* instance id */, int /* kind */, string /* file */);
+    callback update(string /* instance id */, int /* kind */, string /* file */);
+    callback update-all(string /* instance id */, int /* kind */);
+    callback check-updates(string /* instance id */, int /* kind */);
+    callback open-folder(string /* instance id */, int /* kind */);
+    // Installs Iris so shader packs work.
+    callback install-shader-loader(string /* instance id */);
+
+    // Version picker for one installed item (opened with open-versions).
+    in property <[ModVersionItem]> versions;
+    in property <string> versions-title;
+    in property <bool> versions-loading;
+    in property <string> versions-error;
+    // The project is queued or downloading.
+    in property <bool> versions-installing;
+    // How many versions don't suit the instance.
+    in property <int> versions-hidden;
+    in property <bool> show-incompatible;
+    // More versions than `versions` holds; versions-load-more shows the next batch.
+    in property <bool> versions-more;
+    callback open-versions(string /* instance id */, int /* kind */, string /* file */);
+    callback show-incompatible-changed(bool);
+    callback versions-load-more(int /* rows shown */);
+    callback install-version(string /* file id */);
+
+    // Browsing: 0 = Modrinth, 1 = CurseForge.
+    in-out property <int> source: 0;
+    in property <bool> curseforge-ready;
+    in property <[ModHitItem]> results;
+    in property <bool> searching;
+    in property <string> search-error;
+    in property <bool> has-more;
+
+    // The instance id is empty for modpacks.
+    callback search(string /* instance id */, int /* kind */, int /* source */, string /* text */);
+    callback load-more();
+    callback install(string /* instance id */, int /* kind */, int /* source */, string /* project id */);
+    callback open-url(string);
+
+    // A Modrinth project's page, shown over the browse page while `details-open`.
+    in-out property <bool> details-open;
+    in property <ProjectDetailsData> details;
+    // The search result it was opened from, for the install button.
+    in property <ModHitItem> details-hit;
+    in property <[DescriptionBlock]> details-blocks;
+    in property <[LinkItem]> details-links;
+    in property <[LinkItem]> details-gallery;
+    in property <[ModVersionItem]> details-versions;
+    in property <bool> details-versions-more;
+    in property <bool> details-loading;
+    in property <string> details-error;
+    // The instance id is empty for modpacks.
+    callback open-details(string /* instance id */, int /* kind */, string /* project id */);
+    callback details-more-versions();
+    callback details-install-version(string /* file id */);
+}

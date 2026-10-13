@@ -1,0 +1,8 @@
+// Implemented in src/controllers/modpacks.rs. Searching uses ModsApi with the modpacks kind.
+// Installs run in the background; progress shows on the new instance.
+export global ModpacksApi {
+    // Installs the newest version as a new instance.
+    callback install(int /* source */, string /* project id */);
+    // Asks for a .mrpack or CurseForge .zip and installs it.
+    callback import-file();
+}

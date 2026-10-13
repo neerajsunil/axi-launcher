@@ -1,0 +1,24 @@
+import { AccountItem } from "types.slint";
+
+// Implemented in src/controllers/accounts.rs.
+export global AccountsApi {
+    in property <[AccountItem]> items;
+    // The account games start with; empty when `has-active` is false.
+    in property <AccountItem> active;
+    in property <bool> has-active;
+
+    // Microsoft sign-in in progress: the code to enter, what is happening, or what went wrong.
+    in property <string> login-code;
+    in property <string> login-status;
+    in property <string> login-error;
+    in property <bool> login-busy;
+
+    callback sign-in();
+    callback cancel-sign-in();
+    callback open-sign-in-page();
+    callback add-offline(string /* name */);
+    callback select(string /* id */);
+    callback remove(string /* id */);
+    // Signs a Microsoft account in again with its saved token.
+    callback refresh(string /* id */);
+}

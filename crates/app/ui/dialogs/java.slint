@@ -1,0 +1,218 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, DialogKind } from "../nav.slint";
+import { JavaApi } from "../api/java.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+import { Badge } from "../components/card.slint";
+import { ListRow } from "../components/list-row.slint";
+import { ScrollView } from "../components/scroll-view.slint";
+import { Segmented } from "../components/segmented.slint";
+import { ProgressBar } from "../components/progress-bar.slint";
+import { SkeletonList, Delayed } from "../components/skeleton.slint";
+import { Spinner } from "../components/spinner.slint";
+
+// "In use" marker for the row matching the field's current path.
+component InUseBadge inherits Badge {
+    text: "In use";
+    text-color: Theme.accent;
+    fill: Theme.surface;
+}
+
+// Picks the Java a page's JavaField uses: an installed one, or a download from one of
+// several providers (including versions newer than Minecraft needs).
+export component JavaDialog inherits Dialog {
+    // 0 = Installed, 1 = Download
+    property <int> tab;
+    property <bool> busy: JavaApi.busy-text != "";
+
+    function use(path: string) {
+        JavaApi.pick(path);
+        root.close();
+    }
+
+    title: "Select Java";
+    panel-width: 680px;
+    close => {
+        Nav.dialog = DialogKind.none;
+    }
+    init => {
+        JavaApi.detect();
+    }
+
+    HorizontalLayout {
+        spacing: 12px;
+        Segmented {
+            options: ["Installed", "Download"];
+            current <=> root.tab;
+            selected(i) => {
+                if i == 1 && JavaApi.releases.length == 0 && !JavaApi.releases-loading {
+                    JavaApi.load-releases(JavaApi.provider);
+                }
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+        if root.tab == 1: Segmented {
+            options: JavaApi.providers;
+            current <=> JavaApi.provider;
+            selected(i) => {
+                releases.scroll-to-top();
+                JavaApi.load-releases(i);
+            }
+        }
+    }
+
+    Text {
+        text: root.tab == 0
+            ? "Automatic downloads the Java each Minecraft version needs and is right for most players."
+            : "Newer versions than a game needs usually work, but some mods may not support them.";
+        color: Theme.text-muted;
+        wrap: word-wrap;
+    }
+
+    Rectangle {
+        height: 340px;
+
+        if root.tab == 0: ScrollView {
+            spacing: 2px;
+            ListRow {
+                title: "Automatic";
+                detail: "Downloads the version each game needs from Mojang";
+                highlighted: JavaApi.path == "";
+                action-text: self.highlighted ? "" : "Use";
+                action-kind: ButtonKind.secondary;
+                action => {
+                    root.use("");
+                }
+                if JavaApi.path == "": InUseBadge { }
+                Badge {
+                    text: "Recommended";
+                }
+            }
+            for item in JavaApi.installs: ListRow {
+                title: item.title;
+                detail: item.path;
+                highlighted: item.path == JavaApi.path;
+                action-text: self.highlighted ? "" : "Use";
+                action-kind: ButtonKind.secondary;
+                removable: item.managed;
+                action => {
+                    root.use(item.path);
+                }
+                remove => {
+                    JavaApi.remove(item.path);
+                }
+                if item.path == JavaApi.path: InUseBadge { }
+                if item.vendor != "": Badge {
+                    text: item.vendor;
+                }
+                if item.managed: Badge {
+                    text: "Downloaded";
+                }
+            }
+            if JavaApi.detecting && JavaApi.installs.length == 0: HorizontalLayout {
+                height: 56px;
+                alignment: center;
+                spacing: 10px;
+                Spinner {
+                    size: 18px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: "Looking for Java on this computer";
+                    color: Theme.text-muted;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        if root.tab == 1 && JavaApi.releases.length == 0 && JavaApi.releases-loading: Delayed {
+            delay: 60ms;
+            SkeletonList {
+                rows: 5;
+                row-height: 56px;
+                icon-size: 0px;
+                button: true;
+            }
+        }
+        if root.tab == 1 && JavaApi.releases.length == 0 && !JavaApi.releases-loading: Text {
+            text: JavaApi.releases-error != "" ? JavaApi.releases-error : "Nothing available for this computer";
+            color: JavaApi.releases-error != "" ? Theme.danger : Theme.text-muted;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+
+        releases := ScrollView {
+            visible: root.tab == 1 && JavaApi.releases.length > 0;
+            spacing: 2px;
+            for item[i] in JavaApi.releases: ListRow {
+                title: item.title;
+                detail: item.detail;
+                highlighted: item.installed && item.path == JavaApi.path;
+                action-text: item.outdated ? "Update" : self.highlighted ? "" : item.installed ? "Use" : "Download";
+                action-icon: item.installed && !item.outdated ? Icons.check : Icons.download;
+                action-kind: ButtonKind.secondary;
+                action-enabled: (item.installed && !item.outdated) || !root.busy;
+                removable: item.installed;
+                remove => {
+                    JavaApi.remove(item.path);
+                }
+                action => {
+                    if item.installed && !item.outdated {
+                        root.use(item.path);
+                    } else {
+                        JavaApi.install(JavaApi.provider, i);
+                    }
+                }
+                if item.installed && item.path == JavaApi.path: InUseBadge { }
+                if item.lts: Badge {
+                    text: "LTS";
+                }
+                if item.newer: Badge {
+                    text: "Newer than Minecraft needs";
+                    text-color: Theme.warning;
+                }
+                if item.outdated: Badge {
+                    text: "Update available";
+                    text-color: Theme.accent;
+                }
+                if item.installed && !item.outdated && item.path != JavaApi.path: Badge {
+                    text: "Downloaded";
+                }
+            }
+        }
+    }
+
+    if root.busy: VerticalLayout {
+        spacing: 6px;
+        Text {
+            text: JavaApi.busy-text;
+            color: Theme.text-muted;
+            font-size: Theme.font-small;
+            overflow: elide;
+        }
+        ProgressBar {
+            progress: JavaApi.busy-progress;
+        }
+    }
+
+    DialogFooter {
+        alignment: space-between;
+        Button {
+            text: "Browse for java.exe";
+            icon: Icons.folder;
+            clicked => {
+                JavaApi.browse();
+            }
+        }
+        Button {
+            text: "Close";
+            clicked => {
+                root.close();
+            }
+        }
+    }
+}

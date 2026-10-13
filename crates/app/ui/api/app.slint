@@ -1,0 +1,10 @@
+// App-wide notifications. Rust sets `toast`; the UI clears it.
+export global AppApi {
+    in-out property <string> toast;
+    in-out property <bool> toast-error;
+    in property <string> version;
+    in property <string> player-initial;
+    // Background work (game preparation, downloads, Java installs): how many, one per line.
+    in property <int> tasks;
+    in property <string> task-text;
+}

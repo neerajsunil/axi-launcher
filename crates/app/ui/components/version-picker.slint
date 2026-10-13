@@ -1,0 +1,113 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { VersionsApi } from "../api/versions.slint";
+import { TextField } from "text-field.slint";
+import { Toggle } from "toggle.slint";
+import { ScrollView } from "scroll-view.slint";
+import { Badge } from "card.slint";
+import { SkeletonList } from "skeleton.slint";
+
+// Searchable list of game versions. `selected` holds the chosen version id.
+export component VersionPicker inherits VerticalLayout {
+    in-out property <string> selected;
+    property <string> search;
+    property <bool> snapshots;
+
+    spacing: 10px;
+
+    init => {
+        VersionsApi.query("", false);
+    }
+
+    HorizontalLayout {
+        spacing: 12px;
+        TextField {
+            icon: Icons.search;
+            placeholder: "Search versions";
+            text <=> root.search;
+            edited(text) => {
+                VersionsApi.query(text, root.snapshots);
+            }
+        }
+        Toggle {
+            text: "Snapshots";
+            checked <=> root.snapshots;
+            toggled(on) => {
+                VersionsApi.query(root.search, on);
+            }
+        }
+    }
+
+    Rectangle {
+        // Shrinks when the window is short.
+        min-height: 120px;
+        preferred-height: 260px;
+        vertical-stretch: 1;
+        border-radius: Theme.radius;
+        border-width: 1px;
+        border-color: Theme.border;
+        background: Theme.bg;
+        clip: true;
+
+        if VersionsApi.loading: VerticalLayout {
+            padding: 4px;
+            SkeletonList {
+                rows: 7;
+                row-height: 34px;
+                icon-size: 0px;
+                gap: 2px;
+            }
+        }
+        if !VersionsApi.loading && VersionsApi.items.length == 0: Text {
+            text: VersionsApi.error != "" ? VersionsApi.error : "No versions match";
+            color: VersionsApi.error != "" ? Theme.danger : Theme.text-muted;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+
+        ScrollView {
+            content-padding: 4px;
+            spacing: 2px;
+
+            for version in VersionsApi.items: Rectangle {
+                property <bool> chosen: version.id == root.selected;
+                height: 34px;
+                border-radius: Theme.radius-sm;
+                background: chosen ? Theme.accent-soft : row-touch.has-hover ? Theme.control : transparent;
+
+                HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    spacing: 10px;
+                    Text {
+                        text: version.id;
+                        color: Theme.text;
+                        font-weight: chosen ? 700 : 400;
+                        font-size: Theme.font-body;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    if version.kind != "release": Badge {
+                        text: "Snapshot";
+                        text-color: Theme.warning;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text {
+                        text: version.date;
+                        color: Theme.text-faint;
+                        font-size: Theme.font-small;
+                        vertical-alignment: center;
+                    }
+                }
+
+                row-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.selected = version.id;
+                    }
+                }
+            }
+        }
+    }
+}

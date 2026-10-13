@@ -1,0 +1,41 @@
+import { Theme } from "../theme.slint";
+
+// The one tooltip on screen. Controls fill it in on hover; MainWindow draws it above
+// everything (so scroll views and dialogs never clip it).
+export global TooltipState {
+    in-out property <string> text;
+    // The hovered control, in window coordinates.
+    in-out property <length> x;
+    in-out property <length> y;
+    in-out property <length> width;
+    in-out property <length> height;
+}
+
+// Drawn once by MainWindow; sits below the control, or above it near the window bottom.
+export component TooltipLayer inherits Rectangle {
+    if TooltipState.text != "": Rectangle {
+        property <length> gap: 6px;
+        width: min(320px, label.preferred-width + 20px);
+        height: label.preferred-height + 12px;
+        x: clamp(TooltipState.x + (TooltipState.width - self.width) / 2, 8px, root.width - self.width - 8px);
+        y: TooltipState.y + TooltipState.height + self.gap + self.height > root.height - 8px
+            ? TooltipState.y - self.height - self.gap
+            : TooltipState.y + TooltipState.height + self.gap;
+        background: Theme.control;
+        border-radius: Theme.radius-sm;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+        drop-shadow-blur: 12px;
+        drop-shadow-color: #00000040;
+
+        label := Text {
+            width: parent.width - 20px;
+            text: TooltipState.text;
+            color: Theme.text;
+            font-size: Theme.font-small;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}

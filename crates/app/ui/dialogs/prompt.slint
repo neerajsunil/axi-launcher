@@ -1,0 +1,51 @@
+import { Theme } from "../theme.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { TextField } from "../components/text-field.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+
+// Asks for a single line of text, e.g. a new name.
+export component PromptDialog inherits Dialog {
+    in property <string> label;
+    in property <string> initial;
+    in property <string> confirm-text: "Save";
+    callback submitted(string);
+
+    property <string> value: root.initial;
+
+    init => {
+        field.focus();
+    }
+
+    Text {
+        text: root.label;
+        color: Theme.text-muted;
+        font-size: Theme.font-body;
+    }
+    field := TextField {
+        text <=> root.value;
+        accepted => {
+            if root.value != "" {
+                root.submitted(root.value);
+                root.close();
+            }
+        }
+    }
+
+    DialogFooter {
+        Button {
+            text: "Cancel";
+            clicked => {
+                root.close();
+            }
+        }
+        Button {
+            text: root.confirm-text;
+            kind: ButtonKind.primary;
+            enabled: root.value != "";
+            clicked => {
+                root.submitted(root.value);
+                root.close();
+            }
+        }
+    }
+}

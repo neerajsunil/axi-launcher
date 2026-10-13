@@ -1,2 +1,12 @@
 [alias]
-dev = "run --features dev"
+# Run the launcher with Slint live-preview: edits to crates/app/ui/*.slint reload instantly.
+dev = "run -p axi-app --features dev"
+# Run every test in the workspace.
+t = "test --workspace"
+
+# Keys compiled in as built-in defaults are read from the environment at build time and
+# never live in this repository:
+#   AXI_MSA_CLIENT_ID       Azure public-client ID for Microsoft sign-in
+#   AXI_CURSEFORGE_API_KEY  CurseForge API key
+# Set them as environment variables or under [env] in your user-level ~/.cargo/config.toml.
+# Values entered in Settings still override them.

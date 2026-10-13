@@ -1,0 +1,96 @@
+import { Theme } from "../theme.slint";
+import { Nav, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { TextField } from "../components/text-field.slint";
+import { Dialog, DialogFooter } from "../components/dialog.slint";
+import { VersionPicker } from "../components/version-picker.slint";
+import { LoaderPicker } from "../components/loader-picker.slint";
+
+component Label inherits Text {
+    color: Theme.text;
+    font-size: Theme.font-body;
+    font-weight: 600;
+}
+
+export component NewInstanceDialog inherits Dialog {
+    property <string> name;
+    property <string> group;
+    property <string> version;
+    property <int> loader;
+    property <string> loader-version;
+
+    title: "New instance";
+    panel-width: 640px;
+    close => {
+        Nav.dialog = DialogKind.none;
+    }
+
+    HorizontalLayout {
+        spacing: 12px;
+        VerticalLayout {
+            spacing: 6px;
+            horizontal-stretch: 2;
+            Label {
+                text: "Name";
+            }
+            TextField {
+                text <=> root.name;
+                placeholder: root.version != "" ? root.version : "Pick a version below";
+            }
+        }
+        VerticalLayout {
+            spacing: 6px;
+            horizontal-stretch: 1;
+            Label {
+                text: "Group";
+            }
+            TextField {
+                text <=> root.group;
+                placeholder: "Optional";
+            }
+        }
+    }
+
+    VerticalLayout {
+        spacing: 8px;
+        vertical-stretch: 1;
+        Label {
+            text: "Game version";
+        }
+        VersionPicker {
+            vertical-stretch: 1;
+            selected <=> root.version;
+        }
+    }
+
+    VerticalLayout {
+        spacing: 8px;
+        Label {
+            text: "Mod loader";
+        }
+        picker := LoaderPicker {
+            game-version: root.version;
+            loader <=> root.loader;
+            loader-version <=> root.loader-version;
+        }
+    }
+
+    DialogFooter {
+        Button {
+            text: "Cancel";
+            clicked => {
+                root.close();
+            }
+        }
+        Button {
+            text: "Create";
+            kind: ButtonKind.primary;
+            enabled: root.version != "" && picker.valid;
+            clicked => {
+                InstancesApi.create(root.name, root.group, root.version, root.loader, root.loader-version);
+                root.close();
+            }
+        }
+    }
+}

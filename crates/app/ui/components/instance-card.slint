@@ -1,0 +1,359 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Nav, Page, DialogKind } from "../nav.slint";
+import { InstancesApi } from "../api/instances.slint";
+import { InstanceItem } from "../api/types.slint";
+import { ProgressBar } from "progress-bar.slint";
+import { Badge } from "card.slint";
+import { Spinner } from "spinner.slint";
+import { MenuPanel, MenuItem, MenuSeparator } from "menu.slint";
+
+// Square tile with the instance's picture, or its loader's logo when it has none.
+// With `editable`, hovering shows a pencil and clicking calls `edit`.
+export component InstanceAvatar inherits Rectangle {
+    in property <InstanceItem> item;
+    in property <length> size: 44px;
+    in property <bool> editable;
+    callback edit();
+
+    width: root.size;
+    height: root.size;
+    border-radius: root.size > 60px ? Theme.radius-lg : Theme.radius;
+    // Loader-tinted backdrop: green for vanilla, warm for Fabric, orange for NeoForge.
+    background: root.item.has-icon ? transparent
+        : root.item.loader-index == 1 ? @linear-gradient(135deg, #e9dcc0 0%, #cdb991 100%)
+        : root.item.loader-index == 2 ? @linear-gradient(135deg, #ffcf9e 0%, #f2a35e 100%)
+        : @linear-gradient(135deg, #a4e4a0 0%, #5fbf63 100%);
+    clip: true;
+
+    if root.item.has-icon: Image {
+        source: root.item.icon;
+        width: parent.width;
+        height: parent.height;
+        image-fit: cover;
+    }
+    if !root.item.has-icon: Image {
+        source: root.item.loader-index == 1 ? Icons.fabric : root.item.loader-index == 2 ? Icons.neoforge : Icons.grass-block;
+        width: parent.width * 0.62;
+        height: parent.height * 0.62;
+    }
+
+    if root.editable: Rectangle {
+        background: edit-touch.has-hover ? #00000080 : transparent;
+        animate background { duration: Theme.fast; }
+        Image {
+            source: Icons.edit;
+            colorize: #ffffff;
+            width: root.size * 0.3;
+            height: root.size * 0.3;
+            opacity: edit-touch.has-hover ? 1 : 0;
+            animate opacity { duration: Theme.fast; }
+        }
+        edit-touch := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                root.edit();
+            }
+        }
+    }
+}
+
+// Round play / stop button for an instance; spins while the game is being prepared.
+// Shows a soft version until `emphasized`, so a grid of cards isn't a wall of green.
+export component PlayCircle inherits Rectangle {
+    in property <InstanceItem> item;
+    in property <length> size: 40px;
+    in property <bool> emphasized: true;
+    callback play();
+    callback stop();
+
+    out property <bool> hovered: touch.has-hover;
+    property <bool> strong: root.emphasized || touch.has-hover || root.item.running;
+
+    width: root.size;
+    height: root.size;
+    border-radius: root.size / 2;
+    background: root.item.busy ? Theme.control
+        : root.item.running ? (touch.has-hover ? Theme.danger-hover : Theme.danger)
+        : !root.strong ? Theme.play-soft
+        : touch.pressed ? Theme.play-pressed : touch.has-hover ? Theme.play-hover : Theme.play;
+    drop-shadow-blur: root.strong && !root.item.busy ? 12px : 0;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: root.item.running ? Theme.danger.with-alpha(0.35) : Theme.play.with-alpha(0.35);
+    animate background, drop-shadow-blur { duration: Theme.fast; }
+
+    if root.item.busy: Spinner {
+        size: root.size * 0.45;
+        tint: Theme.play;
+    }
+    if !root.item.busy: Image {
+        source: root.item.running ? Icons.stop : Icons.play;
+        colorize: root.item.running ? #ffffff : root.strong ? Theme.on-play : Theme.play;
+        width: root.size * 0.38;
+        height: root.size * 0.38;
+        // play.svg already offsets the triangle right of its box for optical centering.
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: root.item.busy ? default : pointer;
+        clicked => {
+            if root.item.running {
+                root.stop();
+            } else if !root.item.busy {
+                root.play();
+            }
+        }
+    }
+}
+
+// Right-click / "more" menu for an instance. Show it with `show-at(x, y)`.
+export component InstanceMenu inherits Rectangle {
+    in property <InstanceItem> item;
+    property <length> menu-x;
+    property <length> menu-y;
+
+    public function show-at(x: length, y: length) {
+        root.menu-x = x;
+        root.menu-y = y;
+        popup.show();
+    }
+
+    function select() {
+        InstancesApi.select(root.item.id);
+    }
+
+    width: 0;
+    height: 0;
+
+    popup := PopupWindow {
+        x: root.menu-x;
+        y: root.menu-y;
+        width: 210px;
+        height: 10px + 6 * 34px + 2 * 9px + 7 * 1px;
+
+        MenuPanel {
+            MenuItem {
+                text: root.item.running ? "Stop" : "Play";
+                icon: root.item.running ? Icons.stop : Icons.play;
+                enabled: !root.item.busy;
+                clicked => {
+                    if root.item.running {
+                        InstancesApi.stop(root.item.id);
+                    } else {
+                        InstancesApi.play(root.item.id);
+                    }
+                }
+            }
+            MenuItem {
+                text: "Mods & content";
+                icon: Icons.package;
+                clicked => {
+                    root.select();
+                    Nav.instance-tab = 1;
+                    Nav.page = Page.instance;
+                }
+            }
+            MenuItem {
+                text: "Open folder";
+                icon: Icons.folder;
+                clicked => {
+                    InstancesApi.open-folder(root.item.id);
+                }
+            }
+            MenuSeparator { }
+            MenuItem {
+                text: "Rename";
+                icon: Icons.edit;
+                clicked => {
+                    root.select();
+                    Nav.dialog = DialogKind.rename-instance;
+                }
+            }
+            MenuItem {
+                text: "Duplicate";
+                icon: Icons.copy;
+                clicked => {
+                    root.select();
+                    Nav.dialog = DialogKind.copy-instance;
+                }
+            }
+            MenuSeparator { }
+            MenuItem {
+                text: "Delete";
+                icon: Icons.trash;
+                danger: true;
+                enabled: !root.item.running && !root.item.busy;
+                clicked => {
+                    root.select();
+                    Nav.dialog = DialogKind.delete-instance;
+                }
+            }
+        }
+    }
+}
+
+// A tile in the library grid. Click opens it, the round button plays it, right-click
+// (or the ⋯ button) opens the instance menu.
+export component InstanceCard inherits Rectangle {
+    in property <InstanceItem> item;
+    callback open();
+    callback play();
+    callback stop();
+
+    property <bool> hovered: touch.has-hover || play-button.hovered || more-touch.has-hover;
+
+    background: root.hovered ? Theme.surface-hover : Theme.surface;
+    border-radius: Theme.radius-lg;
+    border-width: 1px;
+    border-color: root.item.running ? Theme.play : root.hovered ? Theme.border-strong : Theme.border;
+    drop-shadow-blur: root.hovered ? 18px : 0;
+    drop-shadow-offset-y: 6px;
+    drop-shadow-color: Theme.shadow;
+    animate background, border-color, drop-shadow-blur { duration: Theme.fast; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.open();
+        }
+        pointer-event(e) => {
+            if e.button == PointerEventButton.right && e.kind == PointerEventKind.up {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        HorizontalLayout {
+            spacing: 14px;
+            InstanceAvatar {
+                item: root.item;
+                size: 56px;
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 3px;
+                horizontal-stretch: 1;
+                Text {
+                    text: root.item.name;
+                    color: Theme.text;
+                    font-size: Theme.font-large;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.item.version + " · " + root.item.loader;
+                    color: Theme.text-muted;
+                    font-size: Theme.font-small;
+                    overflow: elide;
+                }
+                if root.item.group != "": HorizontalLayout {
+                    alignment: start;
+                    padding-top: 2px;
+                    Badge {
+                        text: root.item.group;
+                    }
+                }
+            }
+            // ⋯ button, shown on hover.
+            more := Rectangle {
+                width: 28px;
+                height: 28px;
+                y: 0;
+                border-radius: Theme.radius-sm;
+                background: more-touch.has-hover ? Theme.control-hover : transparent;
+                opacity: root.hovered ? 1 : 0;
+                animate opacity { duration: Theme.fast; }
+                Image {
+                    source: Icons.more;
+                    colorize: Theme.text-muted;
+                    width: 18px;
+                    height: 18px;
+                }
+                more-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        menu.show-at(
+                            more.absolute-position.x - root.absolute-position.x + more.width - 210px,
+                            more.absolute-position.y - root.absolute-position.y + more.height + 4px);
+                    }
+                }
+            }
+        }
+
+        Rectangle { vertical-stretch: 1; }
+
+        HorizontalLayout {
+            spacing: 10px;
+            height: 40px;
+
+            if root.item.busy: VerticalLayout {
+                alignment: center;
+                spacing: 6px;
+                horizontal-stretch: 1;
+                Text {
+                    text: root.item.status;
+                    color: Theme.text-muted;
+                    font-size: Theme.font-small;
+                    overflow: elide;
+                }
+                ProgressBar {
+                    progress: root.item.progress;
+                }
+            }
+            if !root.item.busy && root.item.running: HorizontalLayout {
+                alignment: start;
+                horizontal-stretch: 1;
+                Badge {
+                    text: "● Playing now";
+                    text-color: Theme.play;
+                    fill: Theme.play-soft;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            if !root.item.busy && !root.item.running: HorizontalLayout {
+                spacing: 6px;
+                horizontal-stretch: 1;
+                Image {
+                    source: Icons.clock;
+                    colorize: Theme.text-faint;
+                    width: 13px;
+                    height: 13px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: root.item.last-played == "Never" ? "Not played yet" : root.item.last-played;
+                    color: Theme.text-faint;
+                    font-size: Theme.font-small;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+
+            play-button := PlayCircle {
+                item: root.item;
+                size: 40px;
+                emphasized: touch.has-hover || more-touch.has-hover;
+                y: 0;
+                play => {
+                    root.play();
+                }
+                stop => {
+                    root.stop();
+                }
+            }
+        }
+    }
+
+    menu := InstanceMenu {
+        x: 0;
+        y: 0;
+        item: root.item;
+    }
+}
