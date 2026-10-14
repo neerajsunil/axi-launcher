@@ -12,8 +12,8 @@ use crate::{AppApi, InstancesApi, MainWindow, SettingsApi, Theme};
 
 pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
     ui.global::<AppApi>().set_version(env!("CARGO_PKG_VERSION").into());
-    ui.global::<SettingsApi>().set_built_in_curseforge_key(axi_core::settings::BUILT_IN_CURSEFORGE_KEY.is_some_and(|k| !k.trim().is_empty()));
-    ui.global::<SettingsApi>().set_built_in_client_id(axi_core::account::microsoft::BUILT_IN_CLIENT_ID.is_some_and(|id| !id.is_empty()));
+    ui.global::<SettingsApi>().set_built_in_curseforge_key(!axi_core::built_in::curseforge_key().is_empty());
+    ui.global::<SettingsApi>().set_built_in_client_id(!axi_core::built_in::msa_client_id().is_empty());
     show(ui, state);
 
     let api = ui.global::<SettingsApi>();

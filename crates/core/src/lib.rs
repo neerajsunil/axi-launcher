@@ -3,6 +3,7 @@
 //! Only modern Minecraft (1.13+, the `arguments` launch format) is supported.
 
 pub mod account;
+pub mod built_in;
 pub mod error;
 pub mod instance;
 pub mod java;

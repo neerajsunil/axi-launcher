@@ -88,14 +88,11 @@ impl Default for GlobalSettings {
     }
 }
 
-/// CurseForge API key compiled in through the `AXI_CURSEFORGE_API_KEY` environment variable.
-pub const BUILT_IN_CURSEFORGE_KEY: Option<&str> = option_env!("AXI_CURSEFORGE_API_KEY");
-
 impl GlobalSettings {
     /// The CurseForge key to use: the user's own, else the built-in one; empty if there is neither.
     pub fn curseforge_key(&self) -> String {
         let own = self.curseforge_api_key.trim();
-        if own.is_empty() { BUILT_IN_CURSEFORGE_KEY.unwrap_or_default().trim().to_string() } else { own.to_string() }
+        if own.is_empty() { crate::built_in::curseforge_key() } else { own.to_string() }
     }
 
     /// Loads settings, falling back to defaults when the file does not exist yet.
@@ -170,7 +167,7 @@ mod tests {
     #[test]
     fn own_curseforge_key_wins() {
         let mut s = GlobalSettings::default();
-        assert_eq!(s.curseforge_key(), BUILT_IN_CURSEFORGE_KEY.unwrap_or_default());
+        assert_eq!(s.curseforge_key(), crate::built_in::curseforge_key());
         s.curseforge_api_key = " mine ".into();
         assert_eq!(s.curseforge_key(), "mine");
     }

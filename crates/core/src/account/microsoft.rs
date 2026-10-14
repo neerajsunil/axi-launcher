@@ -26,16 +26,13 @@ const XSTS_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 const MC_LOGIN_URL: &str = "https://api.minecraftservices.com/authentication/login_with_xbox";
 const PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
 
-/// Azure client ID compiled in through the `AXI_MSA_CLIENT_ID` environment variable.
-pub const BUILT_IN_CLIENT_ID: Option<&str> = option_env!("AXI_MSA_CLIENT_ID");
-
 /// The client ID to sign in with: the configured one, else the built-in one.
 pub fn client_id(configured: &str) -> Result<String> {
     let configured = configured.trim();
     if !configured.is_empty() {
         return Ok(configured.to_string());
     }
-    BUILT_IN_CLIENT_ID.filter(|id| !id.is_empty()).map(str::to_string).ok_or_else(|| {
+    Some(crate::built_in::msa_client_id()).filter(|id| !id.is_empty()).ok_or_else(|| {
         Error::msg("Add a Microsoft client ID in Settings first.")
     })
 }
