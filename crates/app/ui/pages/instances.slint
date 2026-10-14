@@ -7,6 +7,7 @@ import { Button, ButtonKind } from "../components/button.slint";
 import { TextField } from "../components/text-field.slint";
 import { Segmented } from "../components/segmented.slint";
 import { InstanceCard } from "../components/instance-card.slint";
+import { Card } from "../components/card.slint";
 import { EmptyState } from "../components/empty-state.slint";
 import { PageHeader } from "../components/page.slint";
 
@@ -68,6 +69,60 @@ export component InstancesPage inherits Rectangle {
             }
         }
 
+        // Synced instances on the user's other computers that aren't here yet.
+        if InstancesApi.lan-available.length > 0: VerticalLayout {
+            spacing: 10px;
+            Text {
+                text: "On your network";
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+            }
+            Flickable {
+                height: 68px;
+                content-width: lan-row.preferred-width;
+                lan-row := HorizontalLayout {
+                    spacing: 12px;
+                    alignment: start;
+                    for item in InstancesApi.lan-available: Card {
+                        width: 300px;
+                        height: 68px;
+                        HorizontalLayout {
+                            padding: 14px;
+                            spacing: 12px;
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                alignment: center;
+                                spacing: 2px;
+                                Text {
+                                    text: item.name;
+                                    color: Theme.text;
+                                    font-size: Theme.font-body;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                }
+                                Text {
+                                    text: item.detail + " · on " + item.device;
+                                    color: Theme.text-muted;
+                                    font-size: Theme.font-small;
+                                    overflow: elide;
+                                }
+                            }
+                            Button {
+                                text: "Add";
+                                icon: Icons.download;
+                                kind: ButtonKind.primary;
+                                y: (parent.height - self.height) / 2;
+                                clicked => {
+                                    InstancesApi.add-lan-instance(item.sync-id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         grid := Flickable {
             vertical-stretch: 1;
             content-height: ceil(InstancesApi.items.length / root.columns) * (root.card-height + root.gap) + Theme.page-padding;
@@ -93,7 +148,7 @@ export component InstancesPage inherits Rectangle {
         }
     }
 
-    if InstancesApi.total-count == 0: EmptyState {
+    if InstancesApi.total-count == 0 && InstancesApi.lan-available.length == 0: EmptyState {
         art: Icons.axi;
         title: "No instances yet";
         text: "An instance is a separate Minecraft install with its own version, mods and worlds. Make one from scratch or start from a modpack.";

@@ -6,6 +6,7 @@ pub mod account;
 pub mod error;
 pub mod instance;
 pub mod java;
+pub mod lansync;
 pub mod launch;
 pub mod loader;
 pub mod meta;
@@ -14,6 +15,7 @@ pub mod mods;
 pub mod net;
 pub mod paths;
 pub mod settings;
+pub mod update;
 pub mod util;
 
 pub use error::{Error, Result};

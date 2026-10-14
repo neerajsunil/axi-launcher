@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 /// <root>/instances/<id>/...
 /// <root>/libraries, assets, versions, runtime   (shared by all instances)
 /// <root>/cache/
+/// <root>/updates/                               (a downloaded launcher update)
 /// ```
 #[derive(Debug, Clone)]
 pub struct Paths {
@@ -19,18 +20,34 @@ impl Paths {
         Self { root: root.into() }
     }
 
-    /// `%APPDATA%\.axi-launcher` on Windows, `~/.axi-launcher` elsewhere.
+    /// `%APPDATA%\.axi-launcher` on Windows, `~/Library/Application Support/Axi Launcher`
+    /// on macOS, `~/.axi-launcher` elsewhere.
     pub fn default_root() -> PathBuf {
         let base = std::env::var_os("APPDATA")
             .or_else(|| std::env::var_os("HOME"))
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("."));
-        let root = base.join(".axi-launcher");
-        // Carry data over from before the rename to Axi. If it can't move yet
-        // (a file is in use), keep using it and try again next launch.
-        let legacy = base.join(".mc-launcher");
-        if !root.exists() && legacy.is_dir() && std::fs::rename(&legacy, &root).is_err() {
-            return legacy;
+        let root = if cfg!(target_os = "macos") {
+            base.join("Library/Application Support/Axi Launcher")
+        } else {
+            base.join(".axi-launcher")
+        };
+        // Carry data over from older locations (before the rename to Axi, and before macOS
+        // moved to Application Support). If it can't move yet (a file is in use), keep using
+        // it and try again next launch.
+        if root.exists() {
+            return root;
+        }
+        for legacy in [base.join(".axi-launcher"), base.join(".mc-launcher")] {
+            if legacy != root && legacy.is_dir() {
+                if let Some(parent) = root.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                if std::fs::rename(&legacy, &root).is_err() {
+                    return legacy;
+                }
+                break;
+            }
         }
         root
     }
@@ -73,5 +90,10 @@ impl Paths {
 
     pub fn cache_dir(&self) -> PathBuf {
         self.root.join("cache")
+    }
+
+    /// A downloaded launcher update waiting to be installed.
+    pub fn updates_dir(&self) -> PathBuf {
+        self.root.join("updates")
     }
 }

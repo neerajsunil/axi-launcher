@@ -1,4 +1,4 @@
-import { InstanceItem, InstanceSettingsData } from "types.slint";
+import { InstanceItem, InstanceSettingsData, LanInstanceItem } from "types.slint";
 
 // Implemented in src/controllers/instances.rs, launch.rs and instance_settings.rs.
 export global InstancesApi {
@@ -34,4 +34,10 @@ export global InstancesApi {
     callback clear-logs(string);
     callback play(string);
     callback stop(string);
+
+    // LAN sync (src/lan.rs): instances on other computers to add, turning sync on/off, syncing now.
+    in property <[LanInstanceItem]> lan-available;
+    callback add-lan-instance(string /* sync id */);
+    callback set-lan-sync(string, bool);
+    callback sync-now(string);
 }

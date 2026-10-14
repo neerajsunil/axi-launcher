@@ -29,6 +29,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
                 return state.error(format!("Could not save settings: {e}"));
             }
             *state.settings() = settings;
+            super::update::start(&state);
             show(&ui, &state);
             state.info("Settings saved");
         });

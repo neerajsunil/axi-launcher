@@ -27,6 +27,14 @@ pub struct Target<'a> {
     pub loader_version: &'a str,
 }
 
+/// On Apple Silicon, whether the version's natives are Intel-only: 1.13-1.18 ship LWJGL 3.1/3.2
+/// as `natives-macos` classifier jars with no arm64 build, while 1.19+ (LWJGL 3.3) list
+/// `natives-macos-arm64` as a plain library instead.
+fn needs_intel_java(version: &VersionJson) -> bool {
+    cfg!(all(target_os = "macos", target_arch = "aarch64"))
+        && version.libraries.iter().any(|l| l.natives.as_ref().is_some_and(|n| n.contains_key("osx")))
+}
+
 /// Downloads Java (unless `java_path` is set), the loader, client, libraries, natives and assets.
 pub fn prepare(
     ctx: &LaunchContext,
@@ -45,7 +53,11 @@ pub fn prepare(
     let java = if !java_path.trim().is_empty() {
         PathBuf::from(java_path.trim())
     } else if let Some(jv) = &version.java_version {
-        crate::java::ensure_runtime(ctx.client, &paths.runtime_dir(), &jv.component, threads, progress)?
+        if needs_intel_java(&version) {
+            crate::java::ensure_intel_mac_runtime(ctx.client, &paths.runtime_dir(), &jv.component, threads, progress)?
+        } else {
+            crate::java::ensure_runtime(ctx.client, &paths.runtime_dir(), &jv.component, threads, progress)?
+        }
     } else {
         PathBuf::from("java")
     };

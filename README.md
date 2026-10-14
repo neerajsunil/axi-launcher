@@ -71,6 +71,19 @@ Provide them when you build, as environment variables (or under `[env]` in your 
 
 Both can also be entered later in Axi's **Settings**.
 
+### 📦 Release builds
+
+| Platform | Command | Output |
+| --- | --- | --- |
+| Windows 64-bit | `cargo build --release -p axi-app --target x86_64-pc-windows-msvc` | `axi-launcher.exe` (no VC++ redistributable needed) |
+| macOS Apple Silicon | `packaging/macos/bundle.sh` (on a Mac) | `Axi Launcher.app` and a `.dmg` |
+
+GitHub Actions builds both on every push, and drafts a release with them when you push a `v*` tag.
+Add `AXI_MSA_CLIENT_ID` and `AXI_CURSEFORGE_API_KEY` as repository secrets to bake the keys into those builds.
+
+The Mac build is ad-hoc signed, not notarized, so the first launch needs a right-click → **Open**.
+On Apple Silicon, Minecraft 1.13–1.18 runs on an Intel Java through Rosetta 2 (their graphics libraries have no arm64 build); 1.19+ runs natively.
+
 <div align="center">
 
 Made with 🩷 and a lot of axolotl energy.

@@ -7,6 +7,7 @@ import { NavRail } from "components/nav-rail.slint";
 import { FadeIn } from "components/page.slint";
 import { HomePage } from "pages/home.slint";
 import { Toast } from "components/toast.slint";
+import { UpdateBanner } from "components/update-banner.slint";
 import { TooltipLayer } from "components/tooltip.slint";
 import { InstancesPage } from "pages/instances.slint";
 import { InstanceDetailsPage } from "pages/instance-details.slint";
@@ -30,7 +31,7 @@ export { LoadersApi } from "api/loaders.slint";
 export { ModsApi } from "api/mods.slint";
 export { ModpacksApi } from "api/modpacks.slint";
 export { JavaApi } from "api/java.slint";
-export { AccountItem, InstanceItem, InstanceSettingsData, GlobalSettingsData, VersionItem, LoaderVersionItem, ModItem, ModHitItem, ModVersionItem, JavaInstallItem, JavaReleaseItem, ProjectDetailsData, DescriptionBlock, LinkItem } from "api/types.slint";
+export { AccountItem, InstanceItem, InstanceSettingsData, GlobalSettingsData, VersionItem, LanInstanceItem, LoaderVersionItem, ModItem, ModHitItem, ModVersionItem, JavaInstallItem, JavaReleaseItem, ProjectDetailsData, DescriptionBlock, LinkItem } from "api/types.slint";
 
 export component MainWindow inherits Window {
     title: "Axi Launcher";
@@ -42,30 +43,51 @@ export component MainWindow inherits Window {
     background: Theme.bg;
     default-font-size: Theme.font-body;
 
+    // Hidden for this run once the user picks "Later".
+    property <bool> update-dismissed;
+
     HorizontalLayout {
         NavRail { }
-        Rectangle {
+        VerticalLayout {
             horizontal-stretch: 1;
-            if Nav.page == Page.home: FadeIn {
-                HomePage { }
+            if AppApi.update-version != "" && !root.update-dismissed: Rectangle {
+                height: banner.height + 12px;
+                banner := UpdateBanner {
+                    x: 16px;
+                    y: 12px;
+                    width: parent.width - 32px;
+                    version: AppApi.update-version;
+                    restart => {
+                        AppApi.restart-to-update();
+                    }
+                    dismissed => {
+                        root.update-dismissed = true;
+                    }
+                }
             }
-            if Nav.page == Page.instances: FadeIn {
-                InstancesPage { }
-            }
-            if Nav.page == Page.instance: FadeIn {
-                InstanceDetailsPage { }
-            }
-            if Nav.page == Page.browse-content: FadeIn {
-                BrowseContentPage { }
-            }
-            if Nav.page == Page.browse-modpacks: FadeIn {
-                BrowseModpacksPage { }
-            }
-            if Nav.page == Page.accounts: FadeIn {
-                AccountsPage { }
-            }
-            if Nav.page == Page.settings: FadeIn {
-                SettingsPage { }
+            Rectangle {
+                vertical-stretch: 1;
+                if Nav.page == Page.home: FadeIn {
+                    HomePage { }
+                }
+                if Nav.page == Page.instances: FadeIn {
+                    InstancesPage { }
+                }
+                if Nav.page == Page.instance: FadeIn {
+                    InstanceDetailsPage { }
+                }
+                if Nav.page == Page.browse-content: FadeIn {
+                    BrowseContentPage { }
+                }
+                if Nav.page == Page.browse-modpacks: FadeIn {
+                    BrowseModpacksPage { }
+                }
+                if Nav.page == Page.accounts: FadeIn {
+                    AccountsPage { }
+                }
+                if Nav.page == Page.settings: FadeIn {
+                    SettingsPage { }
+                }
             }
         }
     }

@@ -23,6 +23,18 @@ export struct InstanceItem {
     busy: bool,
     status: string,
     progress: float,
+    // LAN sync is on, and how it last went (only filled in for the selected instance).
+    lan-sync: bool,
+    sync-status: string,
+}
+
+// A synced instance on another computer that isn't in the library yet.
+export struct LanInstanceItem {
+    sync-id: string,
+    name: string,
+    // "1.21.10 · Fabric"
+    detail: string,
+    device: string,
 }
 
 // Editable instance settings. Numbers are strings so Rust can validate them.
@@ -55,6 +67,7 @@ export struct GlobalSettingsData {
     fullscreen: bool,
     downloads: string,
     hide-on-launch: bool,
+    auto-update: bool,
     curseforge-key: string,
     msa-client-id: string,
     data-dir: string,

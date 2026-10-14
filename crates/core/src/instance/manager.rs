@@ -89,8 +89,12 @@ impl InstanceManager {
         copy.config.name = new_name.to_string();
         copy.config.last_played = None;
         copy.config.total_playtime_secs = 0;
+        // A copy is a new instance, not another computer's copy of this one.
+        copy.config.sync_id = None;
+        copy.config.lan_sync = false;
         copy.touch_created();
         let _ = fs::remove_file(copy.log_file());
+        let _ = fs::remove_dir_all(copy.dir.join(crate::lansync::manifest::SYNC_DIR));
         copy.save()?;
         Ok(copy)
     }

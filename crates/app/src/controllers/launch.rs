@@ -7,6 +7,7 @@ use axi_core::launch::{LaunchContext, OutputSink, launch};
 use axi_core::util::now_unix;
 use slint::ComponentHandle;
 
+use crate::lan::Reason;
 use crate::state::AppState;
 use crate::{InstancesApi, MainWindow};
 
@@ -36,10 +37,17 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
     if state.is_active(&id) {
         return;
     }
-    let Some(instance) = state.instance(&id) else { return };
+    if state.instance(&id).is_none() {
+        return;
+    }
     state.set_task(&id, Some(("Preparing...".into(), 0.0)));
 
     thread::spawn(move || {
+        // Bring in what was played on other computers first; it can change the game version.
+        crate::lan::sync(&state, &id, Reason::Launch);
+        let Some(instance) = state.instance(&id) else {
+            return state.set_task(&id, None);
+        };
         let settings = state.settings().clone();
         let versions = state.versions.lock().unwrap().entries.clone();
         let ctx = LaunchContext { paths: &state.paths, client: &state.client, versions: &versions };
@@ -73,6 +81,7 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
             session.stop_requested = false;
         }
         state.mark_dirty();
+        state.lan.announce();
         let hide = settings.hide_on_launch;
         if hide {
             let _ = weak.upgrade_in_event_loop(|ui| {
@@ -108,5 +117,6 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
                 let _ = ui.show();
             });
         }
+        crate::lan::after_exit(&state, &id);
     });
 }

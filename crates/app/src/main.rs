@@ -6,6 +6,7 @@ mod format;
 mod heads;
 mod icons;
 mod instance_icons;
+mod lan;
 mod state;
 mod sync;
 
@@ -20,6 +21,7 @@ slint::include_modules!();
 
 fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState::load(Paths::new(Paths::default_root()))?);
+    lan::start(&state);
     let ui = MainWindow::new()?;
     controllers::register(&ui, &state);
     let _sync = sync::start(&ui, state.clone());
@@ -31,5 +33,6 @@ fn main() -> anyhow::Result<()> {
     });
     ui.show()?;
     slint::run_event_loop_until_quit()?;
+    controllers::update::install_on_exit(&state);
     Ok(())
 }

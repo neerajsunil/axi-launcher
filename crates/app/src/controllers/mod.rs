@@ -5,11 +5,13 @@ mod browse;
 mod instance_settings;
 mod instances;
 mod java;
+mod lan_sync;
 mod launch;
 mod loaders;
 mod modpacks;
 mod mods;
 mod settings;
+pub mod update;
 mod versions;
 
 use std::sync::Arc;
@@ -25,10 +27,12 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
     instances::register(ui, state);
     instance_settings::register(ui, state);
     launch::register(ui, state);
+    lan_sync::register(ui, state);
     loaders::register(ui, state);
     mods::register(ui, state);
     browse::register(ui, state);
     modpacks::register(ui, state);
+    update::register(ui, state);
 }
 
 /// Opens a file or folder with the system's default app.

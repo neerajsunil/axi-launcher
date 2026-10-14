@@ -32,6 +32,7 @@ export component SettingsPage inherits Rectangle {
     property <bool> fullscreen;
     property <string> downloads;
     property <bool> hide-on-launch;
+    property <bool> auto-update;
     property <string> curseforge-key;
     property <string> msa-client-id;
 
@@ -46,6 +47,7 @@ export component SettingsPage inherits Rectangle {
         root.fullscreen = root.source.fullscreen;
         root.downloads = root.source.downloads;
         root.hide-on-launch = root.source.hide-on-launch;
+        root.auto-update = root.source.auto-update;
         root.curseforge-key = root.source.curseforge-key;
         root.msa-client-id = root.source.msa-client-id;
     }
@@ -62,6 +64,7 @@ export component SettingsPage inherits Rectangle {
             fullscreen: root.fullscreen,
             downloads: root.downloads,
             hide-on-launch: root.hide-on-launch,
+            auto-update: root.auto-update,
             curseforge-key: root.curseforge-key,
             msa-client-id: root.msa-client-id,
             data-dir: root.source.data-dir,
@@ -232,6 +235,10 @@ export component SettingsPage inherits Rectangle {
                 Toggle {
                     text: "Hide the launcher while playing";
                     checked <=> root.hide-on-launch;
+                }
+                Toggle {
+                    text: "Update the launcher automatically";
+                    checked <=> root.auto-update;
                 }
                 FormRow {
                     label: "Data folder";

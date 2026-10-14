@@ -181,15 +181,25 @@ pub struct AppState {
     pub heads: crate::heads::HeadStore,
     /// Modpack instances whose pack logo was already looked up this run.
     pub pack_icons: Mutex<HashSet<String>>,
+    pub lan: crate::lan::Lan,
+    /// A downloaded launcher update, installed on restart.
+    pub update: Mutex<Option<axi_core::update::Pending>>,
     dirty: AtomicBool,
 }
 
 impl AppState {
     pub fn load(paths: Paths) -> anyhow::Result<Self> {
-        let settings = GlobalSettings::load(&paths.settings_file()).unwrap_or_else(|e| {
+        let mut settings = GlobalSettings::load(&paths.settings_file()).unwrap_or_else(|e| {
             eprintln!("settings.toml is invalid ({e}); using defaults");
             GlobalSettings::default()
         });
+        if settings.device_id.is_empty() {
+            settings.device_id = axi_core::lansync::random_id();
+            if let Err(e) = settings.save(&paths.settings_file()) {
+                eprintln!("could not save settings.toml: {e}");
+            }
+        }
+        let lan = crate::lan::Lan::new(settings.device_id.clone());
         let accounts = load_accounts(&paths);
         let manager = InstanceManager::new(paths.instances_dir());
         let instances = manager.list()?;
@@ -219,6 +229,8 @@ impl AppState {
             icons,
             heads,
             pack_icons: Mutex::default(),
+            lan,
+            update: Mutex::default(),
             dirty: AtomicBool::new(true),
         })
     }

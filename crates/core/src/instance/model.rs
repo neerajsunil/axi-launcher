@@ -45,6 +45,13 @@ pub struct InstanceConfig {
     pub overrides: Overrides,
     /// The modpack the instance was installed from.
     pub pack: Option<PackOrigin>,
+    /// Links this instance with its copies on other computers. Kept while sync is off so
+    /// turning it back on reconnects to the same copies.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sync_id: Option<String>,
+    /// LAN sync is on.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub lan_sync: bool,
 }
 
 /// A modpack an instance came from.
@@ -78,6 +85,11 @@ impl Instance {
         self.dir.join("launcher.log")
     }
 
+    /// The sync id, when LAN sync is on.
+    pub fn synced(&self) -> Option<&str> {
+        self.config.sync_id.as_deref().filter(|_| self.config.lan_sync)
+    }
+
     /// The picture shown for the instance; when missing, the UI shows its loader's logo.
     pub fn icon_file(&self) -> PathBuf {
         self.dir.join("icon.png")
@@ -94,6 +106,12 @@ impl Instance {
 
     pub(super) fn config_path(dir: &Path) -> PathBuf {
         dir.join(CONFIG_FILE)
+    }
+
+    /// Re-reads `instance.toml`, picking up changes made elsewhere.
+    pub fn reload(&mut self) -> Result<()> {
+        self.config = toml::from_str(&std::fs::read_to_string(Self::config_path(&self.dir))?)?;
+        Ok(())
     }
 
     pub fn save(&self) -> Result<()> {

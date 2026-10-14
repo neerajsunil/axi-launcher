@@ -69,6 +69,36 @@ pub fn ensure_runtime(
     threads: usize,
     progress: Progress,
 ) -> Result<PathBuf> {
+    download_runtime(client, runtimes_dir, platform(), component, threads, progress)
+}
+
+/// The Intel build of runtime `component`, run through Rosetta 2 on Apple Silicon. Versions before
+/// 1.19 ship LWJGL natives that were never built for arm64, so they need an x86_64 JVM there.
+/// Kept apart in `x64/` so it never shadows the native runtime of the same name.
+pub fn ensure_intel_mac_runtime(
+    client: &Client,
+    runtimes_dir: &Path,
+    component: &str,
+    threads: usize,
+    progress: Progress,
+) -> Result<PathBuf> {
+    const ROSETTA: &str = "/Library/Apple/usr/share/rosetta/rosetta";
+    if !Path::new(ROSETTA).exists() {
+        return Err(Error::msg(
+            "This Minecraft version needs Rosetta 2 on Apple Silicon.              Install it by running `softwareupdate --install-rosetta` in Terminal, then try again.",
+        ));
+    }
+    download_runtime(client, &runtimes_dir.join("x64"), "mac-os", component, threads, progress)
+}
+
+fn download_runtime(
+    client: &Client,
+    runtimes_dir: &Path,
+    platform: &str,
+    component: &str,
+    threads: usize,
+    progress: Progress,
+) -> Result<PathBuf> {
     if let Some(java) = installed_runtime(runtimes_dir, component) {
         return Ok(java);
     }
@@ -77,9 +107,9 @@ pub fn ensure_runtime(
 
     progress(format!("Fetching Java runtime {component}..."), 0.0);
     let all: Value = get_json(client, JAVA_RUNTIMES_URL)?;
-    let manifest_url = all[platform()][component][0]["manifest"]["url"]
+    let manifest_url = all[platform][component][0]["manifest"]["url"]
         .as_str()
-        .ok_or_else(|| Error::msg(format!("no {component} runtime for {}", platform())))?;
+        .ok_or_else(|| Error::msg(format!("no {component} runtime for {platform}")))?;
     let manifest: Value = get_json(client, manifest_url)?;
     let files = manifest["files"]
         .as_object()

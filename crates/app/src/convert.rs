@@ -13,7 +13,8 @@ use axi_core::settings::{GlobalSettings, Theme, WindowSettings};
 
 use crate::format;
 use crate::state::Session;
-use crate::{AccountItem, DescriptionBlock, GlobalSettingsData, ProjectDetailsData, InstanceItem, InstanceSettingsData, ModHitItem, ModItem, ModVersionItem, VersionItem};
+use crate::lan::Available;
+use crate::{AccountItem, DescriptionBlock, GlobalSettingsData, ProjectDetailsData, InstanceItem, InstanceSettingsData, LanInstanceItem, ModHitItem, ModItem, ModVersionItem, VersionItem};
 
 pub fn first_letter(name: &str) -> String {
     name.chars().find(|c| c.is_alphanumeric()).map_or("?".into(), |c| c.to_uppercase().collect())
@@ -32,7 +33,12 @@ pub fn account_item(account: &StoredAccount, active: bool, busy: bool, head: Opt
     }
 }
 
-pub fn instance_item(instance: &Instance, session: Option<&Session>, icon: Option<slint::Image>) -> InstanceItem {
+pub fn instance_item(
+    instance: &Instance,
+    session: Option<&Session>,
+    icon: Option<slint::Image>,
+    sync_status: String,
+) -> InstanceItem {
     let c = &instance.config;
     let task = session.and_then(|s| s.task.clone());
     InstanceItem {
@@ -55,6 +61,18 @@ pub fn instance_item(instance: &Instance, session: Option<&Session>, icon: Optio
         busy: task.is_some(),
         status: task.as_ref().map(|t| t.0.as_str()).unwrap_or_default().into(),
         progress: task.map_or(0.0, |t| t.1),
+        lan_sync: instance.synced().is_some(),
+        sync_status: sync_status.into(),
+    }
+}
+
+pub fn lan_instance_item(available: Available) -> LanInstanceItem {
+    let a = &available.advert;
+    LanInstanceItem {
+        sync_id: a.sync_id.as_str().into(),
+        name: a.name.as_str().into(),
+        detail: format!("{} · {}", a.game_version, a.loader.display_name()).into(),
+        device: available.device.into(),
     }
 }
 
@@ -260,6 +278,7 @@ pub fn global_settings(s: &GlobalSettings, paths: &Paths) -> GlobalSettingsData 
         fullscreen: s.window.fullscreen,
         downloads: s.concurrent_downloads.to_string().into(),
         hide_on_launch: s.hide_on_launch,
+        auto_update: s.auto_update,
         curseforge_key: s.curseforge_api_key.as_str().into(),
         msa_client_id: s.microsoft_client_id.as_str().into(),
         data_dir: paths.root().to_string_lossy().as_ref().into(),
@@ -283,6 +302,7 @@ pub fn apply_global_settings(data: &GlobalSettingsData, s: &mut GlobalSettings) 
     s.window = window;
     s.concurrent_downloads = downloads as usize;
     s.hide_on_launch = data.hide_on_launch;
+    s.auto_update = data.auto_update;
     s.curseforge_api_key = data.curseforge_key.trim().to_string();
     s.microsoft_client_id = data.msa_client_id.trim().to_string();
     Ok(())

@@ -7,4 +7,7 @@ export global AppApi {
     // Background work (game preparation, downloads, Java installs): how many, one per line.
     in property <int> tasks;
     in property <string> task-text;
+    // Version of a downloaded update that installs on restart; empty when there is none.
+    in property <string> update-version;
+    callback restart-to-update();
 }

@@ -5,6 +5,7 @@ import { InstancesApi } from "../../api/instances.slint";
 import { Button, ButtonKind } from "../../components/button.slint";
 import { Card } from "../../components/card.slint";
 import { ScrollView } from "../../components/scroll-view.slint";
+import { Toggle } from "../../components/toggle.slint";
 
 component Stat inherits Card {
     in property <string> label;
@@ -47,8 +48,15 @@ component Stat inherits Card {
 
 export component InstanceOverview inherits ScrollView {
     property <string> id: InstancesApi.selected.id;
+    property <bool> idle: !InstancesApi.selected.running && !InstancesApi.selected.busy;
+    property <bool> lan-sync: InstancesApi.selected.lan-sync;
     spacing: 16px;
     content-padding: 2px;
+
+    // Clicking the toggle replaces its binding, so follow the instance's setting by hand.
+    changed lan-sync => {
+        lan-toggle.checked = self.lan-sync;
+    }
 
     HorizontalLayout {
         spacing: 12px;
@@ -128,6 +136,67 @@ export component InstanceOverview inherits ScrollView {
                     enabled: !InstancesApi.selected.running && !InstancesApi.selected.busy;
                     clicked => {
                         Nav.dialog = DialogKind.delete-instance;
+                    }
+                }
+            }
+        }
+    }
+
+    Card {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+            HorizontalLayout {
+                spacing: 16px;
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 4px;
+                    Text {
+                        text: "LAN sync";
+                        color: Theme.text;
+                        font-size: Theme.font-large;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: "Keeps mods, resource packs, shaders, worlds and the server list the same on your other computers running Axi with this account. Game settings and mod configs stay separate.";
+                        color: Theme.text-muted;
+                        font-size: Theme.font-small;
+                        wrap: word-wrap;
+                    }
+                }
+                lan-toggle := Toggle {
+                    width: 38px;
+                    y: (parent.height - self.height) / 2;
+                    checked: root.lan-sync;
+                    enabled: root.idle;
+                    toggled(on) => {
+                        InstancesApi.set-lan-sync(root.id, on);
+                    }
+                }
+            }
+            if root.lan-sync: HorizontalLayout {
+                spacing: 12px;
+                Image {
+                    source: Icons.refresh;
+                    colorize: Theme.accent;
+                    width: 13px;
+                    height: 13px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: InstancesApi.selected.sync-status;
+                    color: Theme.text-muted;
+                    font-size: Theme.font-small;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                Button {
+                    text: "Sync now";
+                    icon: Icons.refresh;
+                    enabled: root.idle;
+                    clicked => {
+                        InstancesApi.sync-now(root.id);
                     }
                 }
             }

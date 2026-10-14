@@ -66,6 +66,10 @@ pub struct GlobalSettings {
     pub curseforge_api_key: String,
     /// Azure app used for Microsoft sign-in; empty means the one built into the launcher.
     pub microsoft_client_id: String,
+    /// Identifies this launcher to others on the network for LAN sync; made on first run.
+    pub device_id: String,
+    /// Download new launcher versions in the background and install them on restart.
+    pub auto_update: bool,
 }
 
 impl Default for GlobalSettings {
@@ -78,6 +82,8 @@ impl Default for GlobalSettings {
             hide_on_launch: false,
             curseforge_api_key: String::new(),
             microsoft_client_id: String::new(),
+            device_id: String::new(),
+            auto_update: true,
         }
     }
 }

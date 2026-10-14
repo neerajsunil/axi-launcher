@@ -17,7 +17,7 @@ use axi_core::mods::{ContentKind, ProjectVersion};
 use crate::convert;
 use crate::state::AppState;
 use crate::{
-    AccountItem, AccountsApi, DescriptionBlock, LinkItem, AppApi, DialogKind, InstanceItem, InstancesApi, LoaderVersionItem, LoadersApi, MainWindow, ModHitItem, ModItem,
+    AccountItem, AccountsApi, LanInstanceItem, DescriptionBlock, LinkItem, AppApi, DialogKind, InstanceItem, InstancesApi, LoaderVersionItem, LoadersApi, MainWindow, ModHitItem, ModItem,
     JavaApi, ModVersionItem, ModsApi, Nav, VersionsApi, heads, icons, instance_icons,
 };
 
@@ -72,6 +72,7 @@ struct Models {
     accounts: Rc<VecModel<AccountItem>>,
     instances: Rc<VecModel<InstanceItem>>,
     recent: Rc<VecModel<InstanceItem>>,
+    lan_available: Rc<VecModel<LanInstanceItem>>,
     mods: Rc<VecModel<ModItem>>,
     results: Rc<VecModel<ModHitItem>>,
     versions: Rc<VecModel<ModVersionItem>>,
@@ -151,6 +152,7 @@ pub fn start(ui: &MainWindow, state: Arc<AppState>) -> Timer {
         accounts: Rc::default(),
         instances: Rc::default(),
         recent: Rc::default(),
+        lan_available: Rc::default(),
         mods: Rc::default(),
         results: Rc::default(),
         versions: Rc::default(),
@@ -169,6 +171,7 @@ pub fn start(ui: &MainWindow, state: Arc<AppState>) -> Timer {
     let api = ui.global::<InstancesApi>();
     api.set_items(ModelRc::from(models.instances.clone()));
     api.set_recent(ModelRc::from(models.recent.clone()));
+    api.set_lan_available(ModelRc::from(models.lan_available.clone()));
     api.set_logs(ModelRc::from(logs.clone()));
     ui.global::<AccountsApi>().set_items(ModelRc::from(models.accounts.clone()));
     let mods = ui.global::<ModsApi>();
@@ -226,7 +229,7 @@ fn sync_state(ui: &MainWindow, state: &Arc<AppState>, models: &Models) {
                     || i.config.group.to_lowercase().contains(&search)
             })
             .collect::<Vec<_>>();
-        let item = |i: &Instance| convert::instance_item(i, sessions.get(&i.id), models.instance_icon(state, i));
+        let item = |i: &Instance| convert::instance_item(i, sessions.get(&i.id), models.instance_icon(state, i), String::new());
         if api.get_sort() == 0 {
             visible.sort_by_key(|i| std::cmp::Reverse(recency(i)));
         }
@@ -237,13 +240,16 @@ fn sync_state(ui: &MainWindow, state: &Arc<AppState>, models: &Models) {
         recent.sort_by_key(|i| std::cmp::Reverse(recency(i)));
         sync_model(&models.recent, recent.into_iter().take(RECENT).map(item).collect());
         if let Some(selected) = instances.iter().find(|i| i.id == selected_id.as_str()) {
-            let item = convert::instance_item(selected, sessions.get(&selected.id), models.instance_icon(state, selected));
+            let status = crate::lan::status_text(state, selected);
+            let item = convert::instance_item(selected, sessions.get(&selected.id), models.instance_icon(state, selected), status);
             if api.get_selected() != item {
                 api.set_selected(item);
             }
         }
     }
     api.set_total_count(instances.len() as i32);
+    let available: Vec<LanInstanceItem> = crate::lan::available(state).into_iter().map(convert::lan_instance_item).collect();
+    sync_model(&models.lan_available, available);
 
     let versions = ui.global::<VersionsApi>();
     {
@@ -258,6 +264,9 @@ fn sync_state(ui: &MainWindow, state: &Arc<AppState>, models: &Models) {
     java.set_busy_progress(java_progress);
 
     sync_activity(ui, state);
+
+    let update = state.update.lock().unwrap().as_ref().map(|p| p.version.clone()).unwrap_or_default();
+    ui.global::<AppApi>().set_update_version(update.into());
 
     if let Some(toast) = state.toast.lock().unwrap().take() {
         let app = ui.global::<AppApi>();

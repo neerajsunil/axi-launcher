@@ -10,3 +10,11 @@ t = "test --workspace"
 #   AXI_CURSEFORGE_API_KEY  CurseForge API key
 # Set them as environment variables or under [env] in your user-level ~/.cargo/config.toml.
 # Values entered in Settings still override them.
+
+# Link the C runtime statically so the .exe runs without the Visual C++ Redistributable.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[env]
+# Oldest macOS the Apple Silicon build supports (Big Sur, the first with arm64 Macs).
+MACOSX_DEPLOYMENT_TARGET = "11.0"

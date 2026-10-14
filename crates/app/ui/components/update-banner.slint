@@ -1,0 +1,55 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Button, ButtonKind, ButtonSize } from "button.slint";
+
+// Slim bar above the pages once a launcher update has downloaded.
+export component UpdateBanner inherits Rectangle {
+    in property <string> version;
+    callback restart();
+    callback dismissed();
+
+    height: layout.preferred-height;
+    background: Theme.accent-soft;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: Theme.accent.with-alpha(0.35);
+
+    layout := HorizontalLayout {
+        padding: 6px;
+        padding-left: 14px;
+        spacing: 10px;
+
+        Image {
+            source: Icons.download;
+            colorize: Theme.accent;
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: "Axi Launcher " + root.version + " is ready. It installs the next time you restart.";
+            color: Theme.text;
+            font-size: Theme.font-small;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        Button {
+            text: "Restart now";
+            kind: ButtonKind.primary;
+            size: ButtonSize.small;
+            clicked => {
+                root.restart();
+            }
+        }
+        Button {
+            icon: Icons.x;
+            kind: ButtonKind.ghost;
+            size: ButtonSize.small;
+            tooltip: "Later";
+            clicked => {
+                root.dismissed();
+            }
+        }
+    }
+}
