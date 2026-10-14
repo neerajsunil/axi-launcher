@@ -42,7 +42,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let Some(instance) = state.instance(&id) else { return };
             let kind = kind_from_index(kind);
             if let Err(e) = mods::set_enabled(&instance, kind, &file, enabled) {
-                state.error(format!("Could not change {file}: {e}. Close the game and try again."));
+                { eprintln!("could not change {file}: {e}"); state.error("Couldn't change it. Close the game and try again.") };
             }
             refresh(&state, &id, kind);
         });
@@ -53,11 +53,11 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let Some(instance) = state.instance(&id) else { return };
             let kind = kind_from_index(kind);
             let Ok(_guard) = state.mods_lock.try_lock() else {
-                return state.error("Wait for the downloads to finish");
+                return state.error("Still downloading");
             };
             match mods::remove(&instance, kind, &file) {
                 Ok(()) => state.info(format!("Removed {file}")),
-                Err(e) => state.error(format!("Could not remove {file}: {e}. Close the game and try again.")),
+                Err(e) => { eprintln!("could not remove {file}: {e}"); state.error("Couldn't remove it. Close the game and try again.") }
             }
             state.mods.lock().unwrap().updates.remove(file.as_str());
             refresh(&state, &id, kind);
@@ -189,7 +189,8 @@ pub fn refresh(state: &Arc<AppState>, id: &str, kind: ContentKind) {
             Ok(items) => view.items = items,
             Err(e) => {
                 drop(view);
-                state.error(format!("Could not read the {} folder: {e}", kind.folder()));
+                eprintln!("could not read the {} folder: {e}", kind.folder());
+                state.error(format!("Couldn't read the {} folder", kind.folder()));
             }
         }
         state.mark_dirty();
@@ -219,7 +220,7 @@ fn check_updates(state: &Arc<AppState>, id: &str, kind: ContentKind) {
                 })
             }
             Ok(_) => Ok(String::new()),
-            Err(e) => Err(format!("Could not check for updates: {e}")),
+            Err(e) => Err(format!("Couldn't check for updates: {e}")),
         };
         drop(view);
         match message {
@@ -265,7 +266,7 @@ fn open_versions(state: &Arc<AppState>, id: &str, kind: ContentKind, file_name: 
         picker.loading = false;
         match result {
             Ok(items) => picker.items = items,
-            Err(e) => picker.error = format!("Could not load versions: {e}"),
+            Err(e) => picker.error = format!("Couldn't load versions: {e}"),
         }
         drop(picker);
         state.mark_dirty();
@@ -318,7 +319,7 @@ pub fn install(state: Arc<AppState>, id: String, kind: ContentKind, jobs: Vec<Jo
             view.kind
         };
         if let Some(error) = failed.first() {
-            state.error(format!("Could not install: {error}"));
+            state.error(format!("Couldn't install: {error}"));
         } else if !installed.is_empty() {
             state.info(match installed.as_slice() {
                 [one] => format!("Installed {one}"),

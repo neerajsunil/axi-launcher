@@ -48,8 +48,8 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
                 loader,
             };
             match state.manager.create(&name, &group, game) {
-                Ok(_) => state.info(format!("Created \"{name}\"")),
-                Err(e) => state.error(format!("Could not create instance: {e}")),
+                Ok(_) => state.info(format!("\"{name}\" is ready to play")),
+                Err(e) => state.error(format!("Couldn't create instance: {e}")),
             }
             state.reload_instances();
         });
@@ -58,12 +58,12 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let state = state.clone();
         api.on_delete(move |id| {
             if state.is_active(&id) {
-                return state.error("Stop the game before deleting this instance");
+                return state.error("Close the game first");
             }
             let name = state.instance(&id).map(|i| i.config.name).unwrap_or_default();
             match state.manager.delete(&id) {
                 Ok(()) => state.info(format!("Deleted \"{name}\"")),
-                Err(e) => state.error(format!("Could not delete instance: {e}")),
+                Err(e) => { eprintln!("could not delete instance: {e}"); state.error("Couldn't delete it") },
             }
             state.sessions().remove(id.as_str());
             state.reload_instances();
@@ -73,12 +73,12 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let state = state.clone();
         api.on_copy(move |id, name| {
             let name = unique_name(&state.manager.names(), &name);
-            state.info(format!("Copying to \"{name}\"..."));
+            state.info("Making a copy...");
             let state = state.clone();
             thread::spawn(move || {
                 match state.manager.copy(&id, &name) {
-                    Ok(_) => state.info(format!("Created \"{name}\"")),
-                    Err(e) => state.error(format!("Could not copy instance: {e}")),
+                    Ok(_) => state.info(format!("\"{name}\" is ready to play")),
+                    Err(e) => { eprintln!("could not copy instance: {e}"); state.error("Couldn't copy it") },
                 }
                 state.reload_instances();
             });
@@ -88,7 +88,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let (weak, state) = (ui.as_weak(), state.clone());
         api.on_rename(move |id, name| {
             if let Err(e) = state.manager.rename(&id, &name) {
-                state.error(format!("Could not rename instance: {e}"));
+                state.error(format!("Couldn't rename instance: {e}"));
             }
             state.reload_instances();
             if let Some(ui) = weak.upgrade() {
@@ -100,7 +100,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let (weak, state) = (ui.as_weak(), state.clone());
         api.on_change_game(move |id, version, loader, loader_version| {
             if state.is_active(&id) {
-                return state.error("Stop the game before changing its version");
+                return state.error("Close the game first");
             }
             let loader = convert::loader_from_index(loader);
             let loader_version = loaders::resolve(&state, loader, &version, &loader_version);
@@ -114,7 +114,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let label = format!("{version} {} {loader_version}", loader.display_name());
             match result {
                 Ok(()) => state.info(format!("Switched to {}", label.trim())),
-                Err(e) => state.error(format!("Could not change version: {e}")),
+                Err(e) => state.error(format!("Couldn't change version: {e}")),
             }
             state.reload_instances();
             if let Some(ui) = weak.upgrade() {
@@ -143,7 +143,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let Some(path) = file else { return };
             match instance_icons::set(&instance, &path) {
                 Ok(()) => state.mark_dirty(),
-                Err(e) => state.error(format!("Could not use that picture: {e}")),
+                Err(e) => { eprintln!("could not use that picture: {e}"); state.error("Couldn't use that picture") },
             }
         });
     }
@@ -153,7 +153,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let Some(instance) = state.instance(&id) else { return };
             match instance_icons::reset(&state, &instance) {
                 Ok(()) => state.mark_dirty(),
-                Err(e) => state.error(format!("Could not remove the picture: {e}")),
+                Err(e) => { eprintln!("could not remove the picture: {e}"); state.error("Couldn't remove the picture") },
             }
         });
     }
@@ -161,7 +161,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let state = state.clone();
         api.on_open_log(move |id| match state.instance(&id).map(|i| i.log_file()) {
             Some(log) if log.exists() => open_path(&state, &log),
-            _ => state.error("There is no log yet. Play the instance first."),
+            _ => state.error("No logs yet. Go play!"),
         });
     }
     {

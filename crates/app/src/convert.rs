@@ -13,7 +13,7 @@ use axi_core::settings::{GlobalSettings, Theme, WindowSettings};
 
 use crate::format;
 use crate::state::Session;
-use crate::lan::Available;
+use crate::lan::{Available, SyncState};
 use crate::{AccountItem, DescriptionBlock, GlobalSettingsData, ProjectDetailsData, InstanceItem, InstanceSettingsData, LanInstanceItem, ModHitItem, ModItem, ModVersionItem, VersionItem};
 
 pub fn first_letter(name: &str) -> String {
@@ -37,7 +37,7 @@ pub fn instance_item(
     instance: &Instance,
     session: Option<&Session>,
     icon: Option<slint::Image>,
-    sync_status: String,
+    (sync_state, sync_status): (SyncState, String),
 ) -> InstanceItem {
     let c = &instance.config;
     let task = session.and_then(|s| s.task.clone());
@@ -63,6 +63,7 @@ pub fn instance_item(
         progress: task.map_or(0.0, |t| t.1),
         lan_sync: instance.synced().is_some(),
         sync_status: sync_status.into(),
+        sync_state: sync_state as i32,
     }
 }
 

@@ -204,7 +204,7 @@ impl ModApi<'_> {
     pub(crate) fn key(&self) -> Result<&str> {
         let key = self.curseforge_key.trim();
         if key.is_empty() {
-            return Err(Error::msg("CurseForge needs an API key. Add one in Settings."));
+            return Err(Error::msg("Add a CurseForge key in Settings."));
         }
         Ok(key)
     }

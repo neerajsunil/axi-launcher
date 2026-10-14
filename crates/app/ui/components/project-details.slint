@@ -329,7 +329,7 @@ export component ProjectDetails inherits Rectangle {
                         block: block;
                     }
                     if ModsApi.details-blocks.length == 0 && ModsApi.details-error == "": Text {
-                        text: "The author hasn't written a description.";
+                        text: "No description yet.";
                         color: Theme.text-muted;
                     }
                     Rectangle { height: Theme.page-padding; }
@@ -356,7 +356,7 @@ export component ProjectDetails inherits Rectangle {
                         }
                     }
                     if ModsApi.details-versions.length == 0 && ModsApi.details-error == "": Text {
-                        text: "No versions published yet.";
+                        text: "No versions yet.";
                         color: Theme.text-muted;
                     }
                     Rectangle { height: Theme.page-padding; }

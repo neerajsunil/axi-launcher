@@ -9,7 +9,7 @@ import { Button, ButtonKind, ButtonSize } from "../components/button.slint";
 import { Badge } from "../components/card.slint";
 import { ScrollView } from "../components/scroll-view.slint";
 import { ProgressBar } from "../components/progress-bar.slint";
-import { InstanceAvatar, PlayCircle, InstanceMenu } from "../components/instance-card.slint";
+import { InstanceAvatar, PlayCircle, InstanceMenu, SyncBadge } from "../components/instance-card.slint";
 
 component SectionTitle inherits HorizontalLayout {
     in property <string> text;
@@ -102,12 +102,22 @@ component Hero inherits Rectangle {
                 font-weight: 700;
                 letter-spacing: 1.2px;
             }
-            Text {
-                text: root.item.name;
-                color: Theme.text;
-                font-size: Theme.font-h1;
-                font-weight: 700;
-                overflow: elide;
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: root.item.name;
+                    color: Theme.text;
+                    font-size: Theme.font-h1;
+                    font-weight: 700;
+                    overflow: elide;
+                    horizontal-stretch: 0;
+                }
+                if root.item.lan-sync: SyncBadge {
+                    item: root.item;
+                    size: 30px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Rectangle { horizontal-stretch: 1; }
             }
             Text {
                 text: root.item.version + " · " + root.item.loader
@@ -247,6 +257,11 @@ component RecentTile inherits Rectangle {
                 font-size: Theme.font-small;
                 overflow: elide;
             }
+        }
+        if root.item.lan-sync: SyncBadge {
+            item: root.item;
+            size: 28px;
+            y: (parent.height - self.height) / 2;
         }
         play := PlayCircle {
             item: root.item;
@@ -396,14 +411,14 @@ export component HomePage inherits Rectangle {
         VerticalLayout {
             spacing: 4px;
             Text {
-                text: AccountsApi.has-active ? "Welcome back, " + AccountsApi.active.name : "Welcome to Axi";
+                text: AccountsApi.has-active ? "Welcome back, " + AccountsApi.active.name : "Hey, welcome to Axi!";
                 color: Theme.text;
                 font-size: Theme.font-display;
                 font-weight: 700;
                 overflow: elide;
             }
             Text {
-                text: root.has-instances ? "Pick up where you left off." : "Three quick steps and you're in the game.";
+                text: root.has-instances ? "Ready for another round?" : "Three quick steps and you're in.";
                 color: Theme.text-muted;
                 font-size: Theme.font-large;
             }
@@ -460,7 +475,7 @@ export component HomePage inherits Rectangle {
                     Step {
                         number: 1;
                         title: "Add your account";
-                        text: "Sign in with the Microsoft account that owns Minecraft, or play offline.";
+                        text: "Sign in with Microsoft or play offline.";
                         done: AccountsApi.has-active;
                         current: !AccountsApi.has-active;
                         if !AccountsApi.has-active: Button {
@@ -482,7 +497,7 @@ export component HomePage inherits Rectangle {
                     Step {
                         number: 2;
                         title: "Make an instance";
-                        text: "Pick any version from 1.13 up, with or without mods. Or grab a ready-made modpack.";
+                        text: "Pick a version or grab a modpack.";
                         current: AccountsApi.has-active;
                         Button {
                             text: "Browse modpacks";
@@ -503,7 +518,7 @@ export component HomePage inherits Rectangle {
                     Step {
                         number: 3;
                         title: "Press Play";
-                        text: "Axi downloads the game, Java and everything else it needs for you.";
+                        text: "We'll grab everything else.";
                     }
                 }
                 Image {
@@ -534,7 +549,7 @@ export component HomePage inherits Rectangle {
                 ActionTile {
                     icon: Icons.compass;
                     title: "Discover modpacks";
-                    text: "Modrinth and CurseForge";
+                    text: "Ready-made adventures";
                     tint: Theme.info;
                     clicked => {
                         Nav.page = Page.browse-modpacks;
@@ -543,7 +558,7 @@ export component HomePage inherits Rectangle {
                 ActionTile {
                     icon: Icons.upload;
                     title: "Import a modpack";
-                    text: ".mrpack or CurseForge .zip";
+                    text: "From a file";
                     tint: Theme.warning;
                     clicked => {
                         ModpacksApi.import-file();

@@ -121,7 +121,7 @@ export component JavaDialog inherits Dialog {
                     y: (parent.height - self.height) / 2;
                 }
                 Text {
-                    text: "Looking for Java on this computer";
+                    text: "Looking for Java...";
                     color: Theme.text-muted;
                     vertical-alignment: center;
                 }
@@ -138,7 +138,7 @@ export component JavaDialog inherits Dialog {
             }
         }
         if root.tab == 1 && JavaApi.releases.length == 0 && !JavaApi.releases-loading: Text {
-            text: JavaApi.releases-error != "" ? JavaApi.releases-error : "Nothing available for this computer";
+            text: JavaApi.releases-error != "" ? JavaApi.releases-error : "Nothing for this computer";
             color: JavaApi.releases-error != "" ? Theme.danger : Theme.text-muted;
             horizontal-alignment: center;
             vertical-alignment: center;

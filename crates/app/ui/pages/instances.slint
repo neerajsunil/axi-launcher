@@ -18,6 +18,12 @@ export component InstancesPage inherits Rectangle {
     property <int> columns: max(1, floor((grid.width + root.gap) / (root.min-card-width + root.gap)));
     property <length> card-width: (grid.width - (root.columns - 1) * root.gap) / root.columns;
     property <length> card-height: 156px;
+    // "On your network" sits under the instances; hidden while searching.
+    property <bool> show-lan: InstancesApi.lan-available.length > 0 && InstancesApi.items.length == InstancesApi.total-count;
+    property <length> lan-top: ceil(InstancesApi.items.length / root.columns) * (root.card-height + root.gap) + (InstancesApi.items.length > 0 ? 12px : 0);
+    property <length> lan-title-height: 40px;
+    property <length> lan-card-height: 68px;
+    property <int> lan-rows: ceil(InstancesApi.lan-available.length / root.columns);
 
     // The search box starts empty, so the list must too.
     init => {
@@ -31,12 +37,12 @@ export component InstancesPage inherits Rectangle {
 
         PageHeader {
             title: "Library";
-            subtitle: InstancesApi.total-count == 0 ? "Your instances will live here"
+            subtitle: InstancesApi.total-count == 0 ? "Your worlds start here"
                 : InstancesApi.total-count == 1 ? "1 instance" : InstancesApi.total-count + " instances";
             Button {
                 text: "Import";
                 icon: Icons.upload;
-                tooltip: "Install a .mrpack or CurseForge .zip file";
+                tooltip: "Import a modpack file";
                 clicked => {
                     ModpacksApi.import-file();
                 }
@@ -55,7 +61,7 @@ export component InstancesPage inherits Rectangle {
             spacing: 12px;
             TextField {
                 icon: Icons.search;
-                placeholder: "Search by name, version or group";
+                placeholder: "Search";
                 edited(text) => {
                     InstancesApi.search-changed(text);
                 }
@@ -69,63 +75,9 @@ export component InstancesPage inherits Rectangle {
             }
         }
 
-        // Synced instances on the user's other computers that aren't here yet.
-        if InstancesApi.lan-available.length > 0: VerticalLayout {
-            spacing: 10px;
-            Text {
-                text: "On your network";
-                color: Theme.text;
-                font-size: Theme.font-large;
-                font-weight: 700;
-            }
-            Flickable {
-                height: 68px;
-                content-width: lan-row.preferred-width;
-                lan-row := HorizontalLayout {
-                    spacing: 12px;
-                    alignment: start;
-                    for item in InstancesApi.lan-available: Card {
-                        width: 300px;
-                        height: 68px;
-                        HorizontalLayout {
-                            padding: 14px;
-                            spacing: 12px;
-                            VerticalLayout {
-                                horizontal-stretch: 1;
-                                alignment: center;
-                                spacing: 2px;
-                                Text {
-                                    text: item.name;
-                                    color: Theme.text;
-                                    font-size: Theme.font-body;
-                                    font-weight: 600;
-                                    overflow: elide;
-                                }
-                                Text {
-                                    text: item.detail + " · on " + item.device;
-                                    color: Theme.text-muted;
-                                    font-size: Theme.font-small;
-                                    overflow: elide;
-                                }
-                            }
-                            Button {
-                                text: "Add";
-                                icon: Icons.download;
-                                kind: ButtonKind.primary;
-                                y: (parent.height - self.height) / 2;
-                                clicked => {
-                                    InstancesApi.add-lan-instance(item.sync-id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         grid := Flickable {
             vertical-stretch: 1;
-            content-height: ceil(InstancesApi.items.length / root.columns) * (root.card-height + root.gap) + Theme.page-padding;
+            content-height: root.lan-top + (root.show-lan ? root.lan-title-height + root.lan-rows * (root.lan-card-height + root.gap) : 0) + Theme.page-padding;
 
             for item[i] in InstancesApi.items: InstanceCard {
                 x: mod(i, root.columns) * (root.card-width + root.gap);
@@ -145,13 +97,75 @@ export component InstancesPage inherits Rectangle {
                     InstancesApi.stop(item.id);
                 }
             }
+
+            // Synced instances on the user's other computers that aren't here yet.
+            if root.show-lan: Text {
+                x: 0;
+                y: root.lan-top;
+                height: root.lan-title-height - 12px;
+                text: "On your network";
+                color: Theme.text;
+                font-size: Theme.font-large;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+            for item[i] in root.show-lan ? InstancesApi.lan-available : []: Card {
+                x: mod(i, root.columns) * (root.card-width + root.gap);
+                y: root.lan-top + root.lan-title-height + floor(i / root.columns) * (root.lan-card-height + root.gap);
+                width: root.card-width;
+                height: root.lan-card-height;
+                HorizontalLayout {
+                    padding: 14px;
+                    spacing: 12px;
+                    Rectangle {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: Theme.radius;
+                        background: Theme.info.with-alpha(0.12);
+                        y: (parent.height - self.height) / 2;
+                        Image {
+                            source: Icons.cloud;
+                            colorize: Theme.info;
+                            width: 18px;
+                            height: 18px;
+                        }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        alignment: center;
+                        spacing: 2px;
+                        Text {
+                            text: item.name;
+                            color: Theme.text;
+                            font-size: Theme.font-body;
+                            font-weight: 600;
+                            overflow: elide;
+                        }
+                        Text {
+                            text: item.detail + " · on " + item.device;
+                            color: Theme.text-muted;
+                            font-size: Theme.font-small;
+                            overflow: elide;
+                        }
+                    }
+                    Button {
+                        text: "Add";
+                        icon: Icons.download;
+                        kind: ButtonKind.primary;
+                        y: (parent.height - self.height) / 2;
+                        clicked => {
+                            InstancesApi.add-lan-instance(item.sync-id);
+                        }
+                    }
+                }
+            }
         }
     }
 
     if InstancesApi.total-count == 0 && InstancesApi.lan-available.length == 0: EmptyState {
         art: Icons.axi;
-        title: "No instances yet";
-        text: "An instance is a separate Minecraft install with its own version, mods and worlds. Make one from scratch or start from a modpack.";
+        title: "Nothing here yet";
+        text: "Build your own or grab a modpack.";
         Button {
             text: "Discover modpacks";
             icon: Icons.compass;
@@ -172,7 +186,7 @@ export component InstancesPage inherits Rectangle {
         y: 120px;
         height: parent.height - 120px;
         icon: Icons.search;
-        title: "Nothing matches";
-        text: "No instance has that name, version or group.";
+        title: "No luck";
+        text: "Try another search.";
     }
 }

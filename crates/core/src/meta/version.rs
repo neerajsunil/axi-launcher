@@ -172,7 +172,7 @@ pub fn load_version_json(
     }
     let json: VersionJson = serde_json::from_slice(&fs::read(&path)?)?;
     if json.arguments.is_none() {
-        return Err(Error::msg(format!("{} is too old; only 1.13 and newer are supported", json.id)));
+        return Err(Error::msg(format!("{} is too old. Axi supports 1.13 and newer.", json.id)));
     }
     Ok(json)
 }

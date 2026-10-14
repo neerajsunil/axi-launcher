@@ -64,8 +64,8 @@ export component SearchResults inherits VerticalLayout {
         if root.needs-key: EmptyState {
             icon: Icons.alert;
             tint: Theme.warning;
-            title: "CurseForge needs an API key";
-            text: "CurseForge only lets apps with a key search it. Create a free key at console.curseforge.com and paste it in Settings. Modrinth works without one.";
+            title: "CurseForge needs a key";
+            text: "Add a free key in Settings, or use Modrinth.";
             Button {
                 text: "Get a key";
                 icon: Icons.external-link;
@@ -114,7 +114,7 @@ export component SearchResults inherits VerticalLayout {
         if !root.needs-key && ModsApi.results.length == 0 && !ModsApi.searching && ModsApi.search-error == "": EmptyState {
             icon: Icons.search;
             title: "No " + ContentKinds.plural[root.kind] + " found";
-            text: root.query != "" ? "Nothing matches \"" + root.query + "\". Try fewer or different words." : "";
+            text: root.query != "" ? "Nothing for \"" + root.query + "\". Try other words." : "";
         }
 
         // Kept around (not conditional) so its scroll position survives new searches.
@@ -179,7 +179,7 @@ export component SearchResults inherits VerticalLayout {
                     }
                 }
                 if !ModsApi.searching && ModsApi.search-error == "" && !ModsApi.has-more: Text {
-                    text: "You've reached the end";
+                    text: "That's everything!";
                     color: Theme.text-faint;
                     font-size: Theme.font-small;
                     vertical-alignment: center;

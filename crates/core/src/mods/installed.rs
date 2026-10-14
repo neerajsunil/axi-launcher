@@ -252,7 +252,7 @@ pub fn install(
     }
     if kind.needs_loader() && !config.loader.is_modded() {
         return Err(Error::msg(match kind {
-            ContentKind::Shader => "Shaders need Iris, which runs on Fabric or NeoForge. Choose a mod loader first.",
+            ContentKind::Shader => "Shaders need Fabric or NeoForge.",
             _ => "Choose a mod loader for this instance first",
         }));
     }
@@ -393,8 +393,7 @@ fn resolve(
     check_file_name(&file.file_name)?;
     let url = file.url.clone().ok_or_else(|| {
         Error::msg(format!(
-            "The author of {} only allows downloads from the CurseForge website. \
-             Download it there and put it in the {} folder.",
+            "{} has to be downloaded from the CurseForge website, into the {} folder.",
             info.title,
             kind.folder()
         ))

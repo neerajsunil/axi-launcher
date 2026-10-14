@@ -219,10 +219,10 @@ export component InstanceContent inherits VerticalLayout {
         vertical-stretch: 1;
         EmptyState {
             icon: root.kind-icon;
-            title: root.kind == ContentKinds.shaders ? "Shaders need a mod loader" : "This instance runs vanilla Minecraft";
+            title: root.kind == ContentKinds.shaders ? "Shaders need a mod loader" : "Mods need a mod loader";
             text: root.kind == ContentKinds.shaders
-                ? "Shaders run through Iris, which needs Fabric or NeoForge. Resource packs work without one."
-                : "Switch it to Fabric or NeoForge to install mods. Resource packs work without one.";
+                ? "Switch to Fabric or NeoForge to use shaders."
+                : "Switch to Fabric or NeoForge to add mods.";
             Button {
                 text: "Choose a mod loader";
                 icon: Icons.layers;
@@ -261,7 +261,7 @@ export component InstanceContent inherits VerticalLayout {
                     font-weight: 700;
                 }
                 Text {
-                    text: "Iris is the mod that loads shader packs. Install it once and every shader here works.";
+                    text: "Install it once and you're set.";
                     color: Theme.text-muted;
                     font-size: Theme.font-small;
                     wrap: word-wrap;

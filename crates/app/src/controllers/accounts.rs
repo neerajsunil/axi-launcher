@@ -29,7 +29,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let link = state.login.lock().unwrap().link.clone();
             if !link.is_empty() {
                 if let Err(e) = open::that_detached(&link) {
-                    state.error(format!("Could not open the browser: {e}"));
+                    { eprintln!("could not open the browser: {e}"); state.error("Couldn't open the browser") };
                 }
             }
         });
@@ -82,7 +82,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             let state = state.clone();
             let id = id.to_string();
             thread::spawn(move || match refresh(&state, &id) {
-                Ok(account) => state.info(format!("{} is signed in", account.username)),
+                Ok(account) => state.info(format!("{} is good to go", account.username)),
                 Err(e) => state.error(e),
             });
         });
@@ -143,7 +143,7 @@ fn sign_in(state: Arc<AppState>) {
                     l.busy = false;
                     l.finished = true;
                 });
-                state.info(format!("Signed in as {name}"));
+                state.info(format!("Welcome, {name}!"));
             }
             Ok(Some(_)) => {}
             Err(e) => update(&|l| {
@@ -178,7 +178,7 @@ fn refresh(state: &AppState, id: &str) -> Result<StoredAccount, String> {
         accounts.store.clone()
     };
     state.save_accounts(&store);
-    result.map_err(|e| format!("Could not refresh {}: {e}", account.username))
+    result.map_err(|e| format!("Couldn't refresh {}: {e}", account.username))
 }
 
 /// The active account, ready to launch with; refreshes Microsoft tokens that expired.

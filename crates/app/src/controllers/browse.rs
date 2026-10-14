@@ -100,7 +100,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         api.on_open_url(move |url| {
             if !url.is_empty() {
                 if let Err(e) = open::that_detached(url.as_str()) {
-                    state.error(format!("Could not open the browser: {e}"));
+                    { eprintln!("could not open the browser: {e}"); state.error("Couldn't open the browser") };
                 }
             }
         });
@@ -142,11 +142,11 @@ fn open_details(state: &Arc<AppState>, instance: &str, kind: ContentKind, projec
         view.loading = false;
         match details {
             Ok(details) => view.details = Some(details),
-            Err(e) => view.error = format!("Could not load this project: {e}"),
+            Err(e) => view.error = format!("Couldn't load this project: {e}"),
         }
         match versions {
             Ok(versions) => view.versions = versions,
-            Err(e) if view.error.is_empty() => view.error = format!("Could not load the versions: {e}"),
+            Err(e) if view.error.is_empty() => view.error = format!("Couldn't load the versions: {e}"),
             Err(_) => {}
         }
         drop(view);

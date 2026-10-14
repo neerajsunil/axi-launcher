@@ -50,7 +50,7 @@ fn query(state: &Arc<AppState>, loader: ModLoader, game_version: &str) {
             Ok(versions) => {
                 list.cache.insert(key, versions);
             }
-            Err(e) => list.error = format!("Could not load {} versions: {e}", loader.display_name()),
+            Err(e) => list.error = format!("Couldn't load {} versions: {e}", loader.display_name()),
         }
         drop(list);
         state.mark_dirty();

@@ -46,7 +46,7 @@ fn load(weak: slint::Weak<MainWindow>, state: Arc<AppState>, query: Query) {
                     list.entries = entries;
                     list.error.clear();
                 }
-                Err(e) => list.error = format!("Could not load versions: {e}"),
+                Err(e) => list.error = format!("Couldn't load versions: {e}"),
             }
         }
         state.mark_dirty();

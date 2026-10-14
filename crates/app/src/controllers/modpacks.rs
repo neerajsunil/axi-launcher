@@ -38,7 +38,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
                         install(&state, &path, Some(origin));
                         let _ = std::fs::remove_file(path);
                     }
-                    Err(e) => state.error(format!("Could not download {title}: {e}")),
+                    Err(e) => state.error(format!("Couldn't download {title}: {e}")),
                 }
                 state.browse.lock().unwrap().installing.remove(&project_id);
                 state.mark_dirty();
@@ -79,7 +79,7 @@ fn download(state: &AppState, source: ModSource, project_id: &str) -> axi_core::
 fn install(state: &Arc<AppState>, path: &Path, origin: Option<PackOrigin>) {
     let pack = match modpack::open(path) {
         Ok(pack) => pack,
-        Err(e) => return state.error(format!("Could not open the modpack: {e}")),
+        Err(e) => return state.error(format!("Couldn't open the modpack: {e}")),
     };
     let origin = origin.unwrap_or_else(|| PackOrigin {
         name: pack.name.clone(),
@@ -89,7 +89,7 @@ fn install(state: &Arc<AppState>, path: &Path, origin: Option<PackOrigin>) {
     let name = unique_name(&state.manager.names(), &origin.name);
     let mut instance = match state.manager.create(&name, "", pack.game.clone()) {
         Ok(instance) => instance,
-        Err(e) => return state.error(format!("Could not create the instance: {e}")),
+        Err(e) => return state.error(format!("Couldn't create the instance: {e}")),
     };
     state.reload_instances();
 
@@ -110,18 +110,14 @@ fn install(state: &Arc<AppState>, path: &Path, origin: Option<PackOrigin>) {
                 instance.config.notes = manual_downloads_note(&skipped);
             }
             match instance.save() {
-                Ok(()) if skipped.is_empty() => state.info(format!("Installed {}", origin.name)),
-                Ok(()) => state.info(format!(
-                    "Installed {}, but {} files need a manual download. See the instance notes.",
-                    origin.name,
-                    skipped.len()
-                )),
-                Err(e) => state.error(format!("Could not save the instance: {e}")),
+                Ok(()) if skipped.is_empty() => state.info(format!("{} is ready to play", origin.name)),
+                Ok(()) => state.info(format!("{} is installed. A few files need a manual download, see Notes.", origin.name)),
+                Err(e) => state.error(format!("Couldn't save the instance: {e}")),
             }
         }
         Err(e) => {
             let _ = state.manager.delete(&id);
-            state.error(format!("Could not install {}: {e}", origin.name));
+            state.error(format!("Couldn't install {}: {e}", origin.name));
         }
     }
     state.reload_instances();

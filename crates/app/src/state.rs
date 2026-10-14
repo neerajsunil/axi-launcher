@@ -255,7 +255,7 @@ impl AppState {
     /// Writes the account list to disk and refreshes the UI.
     pub fn save_accounts(&self, store: &AccountStore) {
         if let Err(e) = store.save(&self.paths.accounts_file()) {
-            self.error(format!("Could not save accounts: {e}"));
+            self.error(format!("Couldn't save accounts: {e}"));
         }
         self.mark_dirty();
     }
@@ -268,7 +268,7 @@ impl AppState {
     pub fn reload_instances(&self) {
         match self.manager.list() {
             Ok(list) => *self.instances.lock().unwrap() = list,
-            Err(e) => self.error(format!("Could not read instances: {e}")),
+            Err(e) => self.error(format!("Couldn't read instances: {e}")),
         }
         self.mark_dirty();
     }

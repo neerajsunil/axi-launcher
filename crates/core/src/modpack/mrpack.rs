@@ -51,9 +51,9 @@ pub fn game(index: &Index) -> Result<GameSetup> {
     } else if let Some(v) = deps.get("neoforge") {
         (ModLoader::NeoForge, v.clone())
     } else if deps.contains_key("forge") {
-        return Err(Error::msg("This pack uses Forge, which isn't supported yet. Fabric and NeoForge packs work."));
+        return Err(Error::msg("Forge packs aren't supported yet."));
     } else if deps.contains_key("quilt-loader") {
-        return Err(Error::msg("This pack uses Quilt, which isn't supported yet. Fabric and NeoForge packs work."));
+        return Err(Error::msg("Quilt packs aren't supported yet."));
     } else {
         (ModLoader::Vanilla, String::new())
     };

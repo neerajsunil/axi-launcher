@@ -21,10 +21,10 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             return state.error(e);
         }
         if let Err(e) = instance.save() {
-            return state.error(format!("Could not save instance: {e}"));
+            return { eprintln!("could not save instance: {e}"); state.error("Couldn't save") };
         }
         state.reload_instances();
         select(&ui, &state, &id);
-        state.info("Instance settings saved");
+        state.info("Saved");
     });
 }

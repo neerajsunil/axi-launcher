@@ -86,7 +86,7 @@ pub fn open(path: &Path) -> Result<Modpack> {
         return Err(Error::msg("This isn't a Modrinth or CurseForge modpack"));
     };
     if game.loader == ModLoader::NeoForge && game.version == "1.20.1" {
-        return Err(Error::msg("This pack uses NeoForge for 1.20.1, which isn't supported. Packs for 1.20.2+ work."));
+        return Err(Error::msg("NeoForge 1.20.1 packs aren't supported."));
     }
     let name = if name.trim().is_empty() { "Modpack".to_string() } else { name.trim().to_string() };
     Ok(Modpack { name, version, game, archive: path.to_path_buf(), format })

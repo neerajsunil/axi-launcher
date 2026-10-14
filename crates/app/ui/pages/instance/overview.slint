@@ -6,6 +6,7 @@ import { Button, ButtonKind } from "../../components/button.slint";
 import { Card } from "../../components/card.slint";
 import { ScrollView } from "../../components/scroll-view.slint";
 import { Toggle } from "../../components/toggle.slint";
+import { SyncBadge } from "../../components/instance-card.slint";
 
 component Stat inherits Card {
     in property <string> label;
@@ -158,7 +159,7 @@ export component InstanceOverview inherits ScrollView {
                         font-weight: 700;
                     }
                     Text {
-                        text: "Keeps mods, resource packs, shaders, worlds and the server list the same on your other computers running Axi with this account. Game settings and mod configs stay separate.";
+                        text: "Take your worlds to your other computers.";
                         color: Theme.text-muted;
                         font-size: Theme.font-small;
                         wrap: word-wrap;
@@ -176,11 +177,9 @@ export component InstanceOverview inherits ScrollView {
             }
             if root.lan-sync: HorizontalLayout {
                 spacing: 12px;
-                Image {
-                    source: Icons.refresh;
-                    colorize: Theme.accent;
-                    width: 13px;
-                    height: 13px;
+                SyncBadge {
+                    item: InstancesApi.selected;
+                    size: 28px;
                     y: (parent.height - self.height) / 2;
                 }
                 Text {
@@ -192,7 +191,7 @@ export component InstanceOverview inherits ScrollView {
                     overflow: elide;
                 }
                 Button {
-                    text: "Sync now";
+                    text: "Sync";
                     icon: Icons.refresh;
                     enabled: root.idle;
                     clicked => {

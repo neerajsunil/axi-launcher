@@ -23,9 +23,11 @@ export struct InstanceItem {
     busy: bool,
     status: string,
     progress: float,
-    // LAN sync is on, and how it last went (only filled in for the selected instance).
+    // LAN sync is on, a short label for how it's going, and the state behind it:
+    // 0 = other computer offline, 1 = ready, 2 = failed, 3 = syncing.
     lan-sync: bool,
     sync-status: string,
+    sync-state: int,
 }
 
 // A synced instance on another computer that isn't in the library yet.

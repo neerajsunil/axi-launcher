@@ -28,7 +28,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
     let weak = ui.as_weak();
     ui.global::<AppApi>().on_restart_to_update(move || {
         if state.sessions().values().any(|s| s.task.is_some() || s.game.is_some()) {
-            return state.error("Close running games before restarting to update");
+            return state.error("Close your games first");
         }
         let Some(pending) = state.update.lock().unwrap().clone() else { return };
         if cfg!(debug_assertions) {
@@ -37,10 +37,10 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         // Read before installing: the running exe gets moved aside on Windows.
         let exe = match std::env::current_exe() {
             Ok(exe) => exe,
-            Err(e) => return state.error(format!("Could not update: {e}")),
+            Err(e) => return state.error(format!("Couldn't update: {e}")),
         };
         if let Err(e) = update::install(&state.paths.updates_dir(), &pending) {
-            return state.error(format!("Could not update: {e}"));
+            return state.error(format!("Couldn't update: {e}"));
         }
         *state.update.lock().unwrap() = None;
         if let Err(e) = std::process::Command::new(&exe).spawn() {

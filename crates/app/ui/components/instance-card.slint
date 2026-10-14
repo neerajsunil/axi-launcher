@@ -7,6 +7,7 @@ import { ProgressBar } from "progress-bar.slint";
 import { Badge } from "card.slint";
 import { Spinner } from "spinner.slint";
 import { MenuPanel, MenuItem, MenuSeparator } from "menu.slint";
+import { TooltipState } from "tooltip.slint";
 
 // Square tile with the instance's picture, or its loader's logo when it has none.
 // With `editable`, hovering shows a pencil and clicking calls `edit`.
@@ -103,6 +104,73 @@ export component PlayCircle inherits Rectangle {
                 root.stop();
             } else if !root.item.busy {
                 root.play();
+            }
+        }
+    }
+}
+
+// Cloud on synced instances, colored by how sync is going. Click to sync.
+export component SyncBadge inherits Rectangle {
+    in property <InstanceItem> item;
+    in property <length> size: 28px;
+
+    function hide-tooltip() {
+        tip-timer.running = false;
+        if TooltipState.text == root.tip {
+            TooltipState.text = "";
+        }
+    }
+
+    property <bool> syncing: root.item.sync-state == 3;
+    property <bool> can-sync: !root.item.running && !root.item.busy && !root.syncing;
+    property <string> tip: root.item.sync-status;
+    property <color> tint: root.item.sync-state == 0 ? Theme.text-faint
+        : root.item.sync-state == 2 ? Theme.danger
+        : Theme.info;
+
+    width: root.size;
+    height: root.size;
+    border-radius: root.size / 2;
+    background: root.tint.with-alpha(touch.has-hover && root.can-sync ? 0.22 : 0.12);
+    animate background { duration: Theme.fast; }
+
+    if root.syncing: Spinner {
+        size: root.size * 0.5;
+        tint: root.tint;
+    }
+    if !root.syncing: Image {
+        source: Icons.cloud;
+        colorize: root.tint;
+        width: root.size * 0.55;
+        height: root.size * 0.55;
+    }
+
+    tip-timer := Timer {
+        interval: 450ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            TooltipState.x = root.absolute-position.x;
+            TooltipState.y = root.absolute-position.y;
+            TooltipState.width = root.width;
+            TooltipState.height = root.height;
+            TooltipState.text = root.tip;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: root.can-sync ? pointer : default;
+        changed has-hover => {
+            if self.has-hover {
+                tip-timer.running = true;
+            } else {
+                root.hide-tooltip();
+            }
+        }
+        clicked => {
+            root.hide-tooltip();
+            if root.can-sync {
+                InstancesApi.sync-now(root.item.id);
             }
         }
     }
@@ -334,6 +402,12 @@ export component InstanceCard inherits Rectangle {
                     overflow: elide;
                     horizontal-stretch: 1;
                 }
+            }
+
+            if root.item.lan-sync: SyncBadge {
+                item: root.item;
+                size: 32px;
+                y: (parent.height - self.height) / 2;
             }
 
             play-button := PlayCircle {

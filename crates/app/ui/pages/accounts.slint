@@ -109,7 +109,7 @@ export component AccountsPage inherits Rectangle {
 
         PageHeader {
             title: "Accounts";
-            subtitle: "Games start with the active account. Click one to switch.";
+            subtitle: "Click an account to switch.";
             Button {
                 text: "Add offline";
                 icon: Icons.plus;
@@ -137,7 +137,7 @@ export component AccountsPage inherits Rectangle {
             }
 
             Text {
-                text: "Offline accounts can play singleplayer and LAN, but online servers only accept Microsoft accounts.";
+                text: "Offline accounts can't join online servers.";
                 color: Theme.text-faint;
                 font-size: Theme.font-small;
                 wrap: word-wrap;
@@ -157,14 +157,14 @@ export component AccountsPage inherits Rectangle {
                 x: (parent.width - self.width) / 2;
             }
             Text {
-                text: "No accounts yet";
+                text: "Who's playing?";
                 color: Theme.text;
                 font-size: Theme.font-title;
                 font-weight: 700;
                 horizontal-alignment: center;
             }
             Text {
-                text: "Sign in with the Microsoft account that owns Minecraft, or add an offline name.";
+                text: "Sign in with Microsoft or play offline.";
                 color: Theme.text-muted;
                 horizontal-alignment: center;
             }

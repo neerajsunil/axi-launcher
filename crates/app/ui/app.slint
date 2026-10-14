@@ -99,7 +99,7 @@ export component MainWindow inherits Window {
     if Nav.dialog == DialogKind.java: JavaDialog { }
     if Nav.dialog == DialogKind.delete-instance: ConfirmDialog {
         title: "Delete instance?";
-        message: "\"" + InstancesApi.selected.name + "\" and all its worlds, mods and settings will be permanently deleted. This cannot be undone.";
+        message: "\"" + InstancesApi.selected.name + "\" and all its worlds will be gone for good.";
         confirm-text: "Delete";
         danger: true;
         close => {
@@ -126,7 +126,7 @@ export component MainWindow inherits Window {
     }
     if Nav.dialog == DialogKind.copy-instance: PromptDialog {
         title: "Copy instance";
-        label: "Name of the copy (worlds and files are copied too)";
+        label: "Name";
         initial: InstancesApi.selected.name + " (copy)";
         confirm-text: "Copy";
         close => {
@@ -145,7 +145,7 @@ export component MainWindow inherits Window {
     }
     if Nav.dialog == DialogKind.add-offline-account: PromptDialog {
         title: "Add offline account";
-        label: "Player name (3-16 letters, digits or _)";
+        label: "Player name";
         confirm-text: "Add";
         close => {
             Nav.dialog = DialogKind.none;

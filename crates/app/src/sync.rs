@@ -229,7 +229,10 @@ fn sync_state(ui: &MainWindow, state: &Arc<AppState>, models: &Models) {
                     || i.config.group.to_lowercase().contains(&search)
             })
             .collect::<Vec<_>>();
-        let item = |i: &Instance| convert::instance_item(i, sessions.get(&i.id), models.instance_icon(state, i), String::new());
+        let item = |i: &Instance| {
+            let status = crate::lan::status(state, i);
+            convert::instance_item(i, sessions.get(&i.id), models.instance_icon(state, i), status)
+        };
         if api.get_sort() == 0 {
             visible.sort_by_key(|i| std::cmp::Reverse(recency(i)));
         }
@@ -240,8 +243,7 @@ fn sync_state(ui: &MainWindow, state: &Arc<AppState>, models: &Models) {
         recent.sort_by_key(|i| std::cmp::Reverse(recency(i)));
         sync_model(&models.recent, recent.into_iter().take(RECENT).map(item).collect());
         if let Some(selected) = instances.iter().find(|i| i.id == selected_id.as_str()) {
-            let status = crate::lan::status_text(state, selected);
-            let item = convert::instance_item(selected, sessions.get(&selected.id), models.instance_icon(state, selected), status);
+            let item = item(selected);
             if api.get_selected() != item {
                 api.set_selected(item);
             }

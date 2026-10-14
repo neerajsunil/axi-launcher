@@ -57,6 +57,7 @@ pub struct Lan {
     syncing: Mutex<HashSet<String>>,
     status: Mutex<HashMap<String, Status>>,
     discovery: OnceLock<Discovery>,
+    started: Instant,
 }
 
 impl Lan {
@@ -68,6 +69,7 @@ impl Lan {
             syncing: Mutex::default(),
             status: Mutex::default(),
             discovery: OnceLock::new(),
+            started: Instant::now(),
         }
     }
 
@@ -210,7 +212,7 @@ fn sync_from(state: &Arc<AppState>, id: &str, reason: Reason, only: Option<&str>
     let name = instance.config.name.clone();
     let Some(identity) = identity(state) else {
         if reason == Reason::Manual {
-            state.error("Add an account on the Accounts page to use LAN sync");
+            state.error("Sign in to sync");
         }
         return;
     };
@@ -220,15 +222,23 @@ fn sync_from(state: &Arc<AppState>, id: &str, reason: Reason, only: Option<&str>
     state.lan.announce();
 
     let mut peers = peers_with(state, &identity, &sync_id);
+    // Right after the launcher opens, the other computers may not have been heard from yet.
+    // Ask them to answer rather than launch an out-of-date copy.
+    if reason == Reason::Launch && peers.is_empty() && state.lan.started.elapsed() < TIMEOUT {
+        state.set_task(id, Some(("Syncing...".to_string(), 0.0)));
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while peers.is_empty() && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(250));
+            peers = peers_with(state, &identity, &sync_id);
+        }
+    }
     if let Some(only) = only {
         peers.retain(|(p, _)| p.device.id == only);
     }
     let (busy, idle): (Vec<_>, Vec<_>) = peers.into_iter().partition(|(_, busy)| *busy);
     if reason == Reason::Launch && !busy.is_empty() {
         let names = busy.iter().map(|(p, _)| p.device.name.as_str()).collect::<Vec<_>>().join(", ");
-        state.error(format!(
-            "\"{name}\" is open on {names}. If a world gets played on both, each computer's copy is kept."
-        ));
+        state.error(format!("\"{name}\" is open on {names}"));
     }
 
     let key = state.settings().curseforge_key();
@@ -263,18 +273,16 @@ fn sync_from(state: &Arc<AppState>, id: &str, reason: Reason, only: Option<&str>
     if !conflicts.is_empty() {
         conflicts.sort();
         conflicts.dedup();
-        state.info(format!(
-            "\"{name}\" changed on more than one computer ({}). Both versions were kept.",
-            conflicts.join(", ")
-        ));
+        state.info(format!("\"{name}\" changed on both computers, so we kept both copies"));
     } else if !errors.is_empty() && reason != Reason::Background {
-        state.error(format!("Could not sync \"{name}\": {}", errors.join("; ")));
+        eprintln!("sync of {name} failed: {}", errors.join("; "));
+        state.error(format!("Couldn't sync \"{name}\""));
     } else if reason == Reason::Manual && idle.is_empty() && busy.is_empty() {
-        state.info(format!("No other computer on your network has \"{name}\" right now"));
+        state.info("Other computer offline");
     } else if reason == Reason::Manual && changed == 0 && !synced_with.is_empty() {
-        state.info(format!("\"{name}\" is up to date"));
+        state.info(format!("\"{name}\" is already up to date"));
     } else if changed > 0 && matches!(reason, Reason::Manual | Reason::Background) {
-        state.info(format!("Synced \"{name}\" with {}", synced_with.join(", ")));
+        state.info(format!("Synced \"{name}\""));
     }
 
     state.lan.syncing.lock().unwrap().remove(id);
@@ -298,7 +306,7 @@ pub fn after_exit(state: &Arc<AppState>, id: &str) {
 /// Turns LAN sync on or off for instance `id`.
 pub fn set_enabled(state: &Arc<AppState>, id: &str, on: bool) {
     if state.is_active(id) {
-        return state.error("Wait until the game closes to change LAN sync");
+        return state.error("Close the game first");
     }
     let result = state.manager.get(id).and_then(|mut instance| {
         if on && instance.config.sync_id.is_none() {
@@ -308,7 +316,7 @@ pub fn set_enabled(state: &Arc<AppState>, id: &str, on: bool) {
         instance.save()
     });
     if let Err(e) = result {
-        return state.error(format!("Could not change LAN sync: {e}"));
+        return { eprintln!("could not change lan sync: {e}"); state.error("Couldn't change sync") };
     }
     state.reload_instances();
     state.lan.announce();
@@ -346,7 +354,7 @@ pub fn available(state: &AppState) -> Vec<Available> {
 /// Makes a local copy of a synced instance from another computer and fills it.
 pub fn add(state: &Arc<AppState>, sync_id: &str) {
     let Some(found) = available(state).into_iter().find(|a| a.advert.sync_id == sync_id) else {
-        return state.error("That instance is no longer on your network");
+        return state.error("Other computer offline");
     };
     let a = found.advert;
     let name = unique_name(&state.manager.names(), &a.name);
@@ -358,30 +366,41 @@ pub fn add(state: &Arc<AppState>, sync_id: &str) {
     });
     let instance = match created {
         Ok(instance) => instance,
-        Err(e) => return state.error(format!("Could not add \"{}\": {e}", a.name)),
+        Err(e) => return state.error(format!("Couldn't add \"{}\": {e}", a.name)),
     };
     state.reload_instances();
-    state.info(format!("Copying \"{}\" from {}...", a.name, found.device));
+    state.info(format!("Adding \"{}\"...", a.name));
     let state = state.clone();
     thread::spawn(move || sync(&state, &instance.id, Reason::Manual));
 }
 
-/// One line about the instance's sync for its Overview tab.
-pub fn status_text(state: &AppState, instance: &Instance) -> String {
-    let Some(sync_id) = instance.synced() else { return String::new() };
+/// How an instance's sync is doing, for the cloud's color.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SyncState {
+    /// No other computer with it is on.
+    Offline = 0,
+    Ready = 1,
+    Failed = 2,
+    Syncing = 3,
+}
+
+/// The instance's sync state and a short label for it.
+pub fn status(state: &AppState, instance: &Instance) -> (SyncState, String) {
+    let Some(sync_id) = instance.synced() else { return (SyncState::Offline, String::new()) };
     if state.lan.is_syncing(&instance.id) {
-        return "Syncing...".into();
+        return (SyncState::Syncing, "Syncing".into());
     }
     let status = state.lan.status.lock().unwrap();
     let status = status.get(&instance.id);
-    if let Some(error) = status.map(|s| &s.error).filter(|e| !e.is_empty()) {
-        return format!("Last sync failed: {error}");
+    if status.is_some_and(|s| !s.error.is_empty()) {
+        return (SyncState::Failed, "Sync failed".into());
     }
-    let online = identity(state).map_or(0, |identity| peers_with(state, &identity, sync_id).len());
-    match status.and_then(|s| Some((s.at?, &s.with))) {
-        Some((at, with)) => format!("Synced with {with} · {}", format::time_ago(Some(at)).to_lowercase()),
-        None if online > 0 => format!("On {online} other computer{} · syncs when you play", if online == 1 { "" } else { "s" }),
-        None => "Waiting for another computer with this instance".into(),
+    let online = identity(state).is_some_and(|identity| !peers_with(state, &identity, sync_id).is_empty());
+    let state = if online { SyncState::Ready } else { SyncState::Offline };
+    match status.and_then(|s| s.at) {
+        Some(at) => (state, format!("Synced {}", format::time_ago(Some(at)).to_lowercase())),
+        None if online => (state, "Ready to sync".into()),
+        None => (state, "Other computer offline".into()),
     }
 }
 

@@ -72,7 +72,7 @@ pub fn game(manifest: &Manifest) -> Result<GameSetup> {
             } else if let Some(v) = id.strip_prefix("neoforge-") {
                 (ModLoader::NeoForge, v.to_string())
             } else if id.starts_with("forge-") {
-                return Err(Error::msg("This pack uses Forge, which isn't supported yet. Fabric and NeoForge packs work."));
+                return Err(Error::msg("Forge packs aren't supported yet."));
             } else {
                 return Err(Error::msg(format!("This pack uses an unsupported mod loader ({id})")));
             }

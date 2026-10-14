@@ -26,7 +26,7 @@ fn post<T: DeserializeOwned>(client: &Client, key: &str, path: &str, body: &serd
 
 fn read<T: DeserializeOwned>(resp: reqwest::blocking::Response) -> Result<T> {
     if resp.status() == StatusCode::FORBIDDEN || resp.status() == StatusCode::UNAUTHORIZED {
-        return Err(Error::msg("CurseForge rejected the API key. Check it in Settings."));
+        return Err(Error::msg("Your CurseForge key doesn't work. Check it in Settings."));
     }
     Ok(resp.error_for_status()?.json()?)
 }

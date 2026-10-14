@@ -38,6 +38,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
 /// Opens a file or folder with the system's default app.
 fn open_path(state: &AppState, path: &std::path::Path) {
     if let Err(e) = open::that_detached(path) {
-        state.error(format!("Could not open {}: {e}", path.display()));
+        eprintln!("could not open {}: {e}", path.display());
+        state.error("Couldn't open it");
     }
 }

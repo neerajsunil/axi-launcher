@@ -36,7 +36,7 @@ pub fn client_id(configured: &str) -> Result<String> {
         return Ok(configured.to_string());
     }
     BUILT_IN_CLIENT_ID.filter(|id| !id.is_empty()).map(str::to_string).ok_or_else(|| {
-        Error::msg("No Azure client ID is set. Add one in Settings → Microsoft sign-in.")
+        Error::msg("Add a Microsoft client ID in Settings first.")
     })
 }
 
@@ -131,17 +131,17 @@ pub fn finish_sign_in(client: &Client, token: MicrosoftToken, status: &dyn Fn(&s
     let minecraft: MinecraftToken = match response.status() {
         StatusCode::FORBIDDEN => {
             return Err(Error::msg(
-                "Minecraft rejected this launcher's Azure app. New client IDs must be approved by Mojang first.",
+                "This client ID isn't approved for Minecraft yet.",
             ));
         }
-        StatusCode::TOO_MANY_REQUESTS => return Err(Error::msg("Too many sign-ins. Wait a minute and try again.")),
+        StatusCode::TOO_MANY_REQUESTS => return Err(Error::msg("Whoa, too many sign-ins. Try again in a minute.")),
         _ => response.error_for_status()?.json()?,
     };
 
     status("Loading your profile...");
     let response = client.get(PROFILE_URL).bearer_auth(&minecraft.access_token).send()?;
     if response.status() == StatusCode::NOT_FOUND {
-        return Err(Error::msg("This Microsoft account does not own Minecraft: Java Edition."));
+        return Err(Error::msg("This account doesn't own Minecraft Java."));
     }
     let profile: Profile = response.error_for_status()?.json()?;
 
@@ -200,11 +200,19 @@ fn read_oauth_error(response: Response) -> OAuthError {
 
 fn oauth_error(e: OAuthError) -> Error {
     let text = match e.error.as_str() {
-        "authorization_declined" | "access_denied" => "Sign-in was cancelled in the browser.".to_string(),
+        "authorization_declined" | "access_denied" => "Sign-in was cancelled.".to_string(),
         "expired_token" => "The sign-in code expired. Try again.".to_string(),
         "invalid_grant" => "Your Microsoft sign-in has expired.".to_string(),
+        // AADSTS700016: no app with this ID takes personal accounts.
+        _ if e.error_description.contains("AADSTS700016") => {
+            "Microsoft can't find this client ID. Use the Application (client) ID, and let the app accept personal Microsoft accounts.".to_string()
+        }
+        // AADSTS7000218: the app wants a secret, i.e. public client flows are off.
+        _ if e.error_description.contains("AADSTS7000218") => {
+            "Turn on \"Allow public client flows\" for your Azure app.".to_string()
+        }
         "invalid_client" | "unauthorized_client" => {
-            "The Azure client ID is not set up for this. It needs personal Microsoft accounts and public client flows enabled.".to_string()
+            "Your Azure app needs personal accounts and public client flows turned on.".to_string()
         }
         _ => {
             // Descriptions end with trace and correlation IDs; keep the readable part.

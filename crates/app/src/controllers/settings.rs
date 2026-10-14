@@ -26,7 +26,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
                 return state.error(e);
             }
             if let Err(e) = settings.save(&state.paths.settings_file()) {
-                return state.error(format!("Could not save settings: {e}"));
+                return { eprintln!("could not save settings: {e}"); state.error("Couldn't save settings") };
             }
             *state.settings() = settings;
             super::update::start(&state);

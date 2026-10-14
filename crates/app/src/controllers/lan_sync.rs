@@ -19,7 +19,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let state = state.clone();
         api.on_sync_now(move |id| {
             if state.is_active(&id) {
-                return state.error("Wait until the game closes to sync");
+                return state.error("Close the game first");
             }
             let (state, id) = (state.clone(), id.to_string());
             thread::spawn(move || lan::sync(&state, &id, Reason::Manual));

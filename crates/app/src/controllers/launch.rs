@@ -26,7 +26,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
             });
             if let Some(game) = game {
                 if let Err(e) = game.kill() {
-                    state.error(format!("Could not stop the game: {e}"));
+                    { eprintln!("could not stop the game: {e}"); state.error("Couldn't stop the game") };
                 }
             }
         });
@@ -56,7 +56,7 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
             Ok(account) => account,
             Err(e) => {
                 state.set_task(&id, None);
-                return state.error(format!("Could not start \"{name}\": {e}"));
+                return state.error(format!("Couldn't start \"{name}\": {e}"));
             }
         };
         let progress = |status: String, p: f32| state.set_task(&id, Some((status, p)));
@@ -70,7 +70,7 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
             Err(e) => {
                 state.set_task(&id, None);
                 state.push_log(&id, format!("[launcher] Launch failed: {e}"));
-                return state.error(format!("Could not start \"{name}\": {e}"));
+                return state.error(format!("Couldn't start \"{name}\": {e}"));
             }
         };
         {
@@ -108,9 +108,9 @@ fn play(weak: slint::Weak<MainWindow>, state: Arc<AppState>, id: String) {
             }
             Ok(code) => {
                 state.push_log(&id, format!("[launcher] Game exited with {code}"));
-                state.error(format!("\"{name}\" crashed ({code}). Check the Logs tab."));
+                state.error(format!("\"{name}\" crashed. Check Logs for clues."));
             }
-            Err(e) => state.error(format!("Lost track of the game: {e}")),
+            Err(e) => { eprintln!("lost track of the game: {e}"); state.error("Lost track of the game") },
         }
         if hide {
             let _ = weak.upgrade_in_event_loop(|ui| {

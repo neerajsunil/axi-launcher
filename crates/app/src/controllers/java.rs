@@ -41,7 +41,7 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
                         *state.java_releases.lock().unwrap() = releases;
                         String::new()
                     }
-                    Err(e) => format!("Could not reach {}: {e}", provider.name()),
+                    Err(e) => format!("Couldn't reach {}: {e}", provider.name()),
                 };
                 let items = release_items(&state);
                 let _ = weak.upgrade_in_event_loop(move |ui| {
@@ -79,12 +79,12 @@ pub fn register(ui: &MainWindow, state: &Arc<AppState>) {
         let (weak, state) = (ui.as_weak(), state.clone());
         api.on_remove(move |path| {
             if state.java_task.lock().unwrap().is_some() {
-                return state.error("Wait for the Java download to finish");
+                return state.error("Java is still downloading");
             }
             let path = PathBuf::from(path.as_str());
             match java::remove_install(&state.paths.runtime_dir(), &path) {
                 Ok(()) => state.info("Java deleted"),
-                Err(e) => return state.error(format!("Could not delete Java: {e}")),
+                Err(e) => return { eprintln!("could not delete java: {e}"); state.error("Couldn't delete Java") },
             }
             let Some(ui) = weak.upgrade() else { return };
             let api = ui.global::<JavaApi>();
@@ -122,7 +122,7 @@ fn install(weak: &Weak<MainWindow>, state: &AppState, release: &JavaRelease) {
     *state.java_task.lock().unwrap() = None;
     match result {
         Ok(_) => state.info(format!("{} downloaded", release.name())),
-        Err(e) => state.error(format!("Could not download {}: {e}", release.name())),
+        Err(e) => state.error(format!("Couldn't download {}: {e}", release.name())),
     }
 
     // Show it as installed in both tabs.
